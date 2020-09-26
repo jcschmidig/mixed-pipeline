@@ -1,0 +1,17 @@
+{
+  "name": "mixed-pipeline",
+  "version": "1.0.0",
+  "description": "Pipeline to process synchronous and asynchronous functions",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jcschmidig/mixed-pipeline.git"
+  },
+  "keywords": ["promise", "pipeline", "synchronous", "asynchronous"],
+  "author": "Jean-Claude Schmidig",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jcschmidig/mixed-pipeline/issues"
+  },
+  "homepage": "https://github.com/jcschmidig/mixed-pipeline#readme"
+}
