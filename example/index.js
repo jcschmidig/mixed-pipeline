@@ -1,7 +1,7 @@
 "use strict"
 
 const pipe = require("../index.js")
-const { join, sep:PATH_SEP } = require('path')
+const { join } = require('path')
 const { readdir, readFile, writeFile, unlink } = require('fs/promises')
 const { error:displayError } = console
 
@@ -9,9 +9,6 @@ if (!String.prototype.replaceAll) {
 	String.prototype.replaceAll = function(search, replace) {
 		return this.split(search).join(replace)
 	}
-}
-String.prototype.lastPartOf = function(sep) {
-	return this.split(sep).slice(-1)[0]
 }
 
 const curDir = join(process.cwd(), 'example')
@@ -31,7 +28,7 @@ const noop = () => {}
     but it's not required
  */
 
-// Will be stored to be restored in the process pipeline,
+// Will be stored in the main pipeline to be restored in the process pipeline,
 // so it's only read once in the whole process
 const getTemplate = () => readFile(TEMPLATE_FILENAME, UTF)
 
@@ -57,8 +54,7 @@ const getNewConfig = (_, packagePath) =>
 const convertConfig = (config, template) =>
 	Object.entries(config)
 		  .reduce( (output, [key, value]) =>
-				output.replaceAll(CONF_MARKER + key, value)
-				, template )
+			  output.replaceAll(CONF_MARKER + key, value), template )
 
 // Writes the config file to disk
 const writeConfig = (configOutput, packagePath) =>
@@ -90,5 +86,5 @@ const plFind = pipe(displayError)
     Pipe execution
  */
 
-// Starts the pipeline at the package path
+// Starts the pipeline with the package path
 plFind.execute(PATH_PACKAGES)
