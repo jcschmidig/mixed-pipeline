@@ -33,7 +33,7 @@ module.exports = function(errorHandler=console.error) {
             pipes.map( pipe => actionPipe(pipe, res) ))
         //
         //
-        return _pipeline.reduce( (promise, pipe) => promise
+        _pipeline.reduce( (promise, pipe) => promise
             .then( (res, actRes) =>
                 checkedError(res) || stoppedPipe(res) ? undefined :
                 (actRes = actionResult(pipe, res)) ? actRes :

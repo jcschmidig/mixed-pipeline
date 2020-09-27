@@ -36,8 +36,7 @@ const noop = () => {}
 const getTemplate = () => readFile(TEMPLATE_FILENAME, UTF)
 
 // The starting point, uses the pipeline input to find the subdirs
-const findPackages = dir =>
-	readdir(dir, { withFileTypes: true })
+const findPackages = dir => readdir(dir, { withFileTypes: true })
 
 // Filters the directories and extracts the path names
 const getPaths = (entries, dir) =>
@@ -47,8 +46,7 @@ const getPaths = (entries, dir) =>
 
 // deletes already stored package files, ignoring any errors
 const deleteOldConfigFile = (packagePath) =>
-	unlink(join(packagePath, PACKAGE_NAME))
-		.catch( noop )
+	unlink(join(packagePath, PACKAGE_NAME)).catch( noop )
 
 // reads the config file of the package => example/<package>/config.js
 const getNewConfig = (_, packagePath) =>
@@ -67,8 +65,7 @@ const writeConfig = (configOutput, packagePath) =>
 	writeFile(join(packagePath, PACKAGE_NAME), configOutput, UTF)
 
 // Runs concurrently with writeConfig and therefore gets also the config output
-const displaySuccess = configOutput =>
-	display(JSON.parse(configOutput).name)
+const displaySuccess = configOutput => display(JSON.parse(configOutput).name)
 
 /*
     Pipe definitions
