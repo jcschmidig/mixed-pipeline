@@ -28,7 +28,7 @@ Just write pure functions and let the pipeline handle the rest.
 - `add(<function>, ...)`: adds the function(s) to the pipeline. All these functions will be executed concurrently and get the same input from the previous function(s). The output goes to the following function(s) in the same order.
 - `store(<function>)`: stores the output of the function as an intermediate result without injecting the output to the pipeline.
 - `restore(<function>)`: adds the output of the previously stored function to the pipeline as if it had been produced concurrently with the function before.
-- `split(<pipeline>)`: adds a new pipeline which will be executed with the output of the previous function(s).
+- `split(<pipeline>)`: adds a new pipeline which will be executed for every element of the output array of previous function(s).
 
 #### 4.2 Executing the Pipeline
 - `execute(input)`: Executes the pipeline with the given input. This input is also given to any following function(s) as last argument.
