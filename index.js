@@ -1,28 +1,23 @@
 "use strict"
 
 module.exports = function(errorHandler=console.error) {
-    const pipeline = []
+    const pipeline = [],
 
-    const actionPipe = (action, res, input) =>
-        Promise.resolve(action(...res.concat(input)))
+    actionPipe = (action, res, input) =>
+        Promise.resolve(action(...res.concat(input))),
+    run = ({ arg:pipes, res, input }) =>
+        Promise.all(pipes.map( pipe => actionPipe(pipe, res, input) )),
+    store = ({ arg:func, res, state, input }) =>
+        (state.set(func.name, actionPipe(func, res, input)), res),
+    restore = async ({ arg:name, res, state }) =>
+        res.concat(await state.get(name)),
+    split = ({ arg:pipe, res, state }) =>
+        res.concat(res[0].map( arg => pipe.execute(arg, state))),
+    ok = res => res && res.every(v => v !== null),
 
-    const run = (pipes, res, _, input) =>
-        Promise.all(pipes.map( pipe => actionPipe(pipe, res, input) ))
-
-    const store = (func, res, $state, input) =>
-        ($state.set(func.name, actionPipe(func, res, input)), res)
-
-    const restore = async (name, res, $state) =>
-        res.concat(await $state.get(name))
-
-    const split = (pipe, res, $state) =>
-        res.concat(res[0].map( arg => pipe.execute(arg, $state)))
-
-    const ok = res => res && res.every(v => v !== null) || undefined
-
-    const execute = (input, $state=new Map()) =>
+    execute = (input, state=new Map()) =>
         pipeline.reduce( (promise, { action, arg }) => promise
-            .then( res => ok(res) && action(arg, res, $state, input) )
+            .then( res => ok(res) && action({ arg, res, state, input }) )
             .catch( error => errorHandler({ action, arg, input, error }) )
             , Promise.resolve([input]) )
     //
