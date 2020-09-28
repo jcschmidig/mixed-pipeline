@@ -43,7 +43,7 @@ const getPaths = (entries, dir) =>
 
 // deletes already stored package files, ignoring any errors
 const deleteOldConfigFile = (packagePath) =>
-	unlink(join(packagePath, PACKAGE_NAME)).catch( noop )
+    unlink(join(packagePath, PACKAGE_NAME)).catch( noop )
 
 // reads the config file of the package => example/<package>/config.js
 const getNewConfig = (_, packagePath) =>
