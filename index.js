@@ -15,16 +15,16 @@ module.exports = function(errorHandler=cError, trace=false) {
         res.concat(await state.get(name)),
     split = ({ func:pipe, res, state }) =>
         res.concat(res[0].map( arg => pipe.execute(arg, state))),
-    tracing = args => trace && cDebug('>>> trace <<<\n', args),
+    tracing = args => cDebug('>>> trace <<<\n', args),
     ok = res => res && res.every(v => v !== null),
 
     execute = (input, state=new Map()) =>
         pipeline.reduce( (promise, { method, func }) => promise
             .then( res => (
-                tracing({ method, func, input:res, plus:input }),
+                trace && tracing({ method, func, input:res, plus:input }),
                 ok(res) && method({ func, res, state, input }) ))
             .catch( error => errorHandler({ method, func, input, error }) )
-            , Promise.resolve([input]) )
+            , Promise.resolve([]) )
     //
     const ppl = (method, func) => pipeline.push({ method, func })
     return {
