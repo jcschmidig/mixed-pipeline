@@ -1,6 +1,8 @@
 "use strict"
 
-module.exports = function(errorHandler=console.error) {
+const { error:cError, debug:cDebug} = console
+
+module.exports = function(errorHandler=cError, trace=false) {
     const pipeline = [],
 
     actionPipe = (action, res, input) =>
@@ -13,12 +15,15 @@ module.exports = function(errorHandler=console.error) {
         res.concat(await state.get(name)),
     split = ({ arg:pipe, res, state }) =>
         res.concat(res[0].map( arg => pipe.execute(arg, state))),
+    tracing = args => trace && cDebug('>>> trace <<<\n', args) || true,
     ok = res => res && res.every(v => v !== null),
 
     execute = (input, state=new Map()) =>
         pipeline.reduce( (promise, { action, arg }) => promise
-            .then( res => ok(res) && action({ arg, res, state, input }) )
-            .catch( error => errorHandler({ action, arg, input, error }) )
+            .then( res =>
+                tracing({ method:action, func:arg, input:res, plus:input }) &&
+                ok(res) && action({ arg, res, state, input }) )
+            .catch( error => errorHandler({ method:action, func:arg, input, error }) )
             , Promise.resolve([input]) )
     //
     const ppl = (action, arg) => pipeline.push({ action, arg })

@@ -68,7 +68,7 @@ const displaySuccess = configOutput => display(JSON.parse(configOutput).name)
  */
 
 // Splitted pipeline, runs for every path found in the main pipeline
-const plProcess = pipe(displayError)
+const plProcess = pipe(displayError, true)
     .add(deleteOldConfigFile)
     .add(getNewConfig)
     .restore(getTemplate)
@@ -76,7 +76,7 @@ const plProcess = pipe(displayError)
     .add(writeConfig, displaySuccess)
 
 // Main pipeline
-const plFind = pipe(displayError)
+const plFind = pipe(displayError, true)
 	.store(getTemplate)
 	.add(findPackages)
 	.add(getPaths)
