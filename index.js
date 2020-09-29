@@ -7,26 +7,26 @@ module.exports = function(errorHandler=cError, trace=false) {
 
     actionPipe = (action, res, input) =>
         Promise.resolve(action(...res.concat(input))),
-    run = ({ arg:pipes, res, input }) =>
+    run = ({ func:pipes, res, input }) =>
         Promise.all(pipes.map( pipe => actionPipe(pipe, res, input) )),
-    store = ({ arg:func, res, state, input }) =>
+    store = ({ func, res, state, input }) =>
         (state.set(func.name, actionPipe(func, res, input)), res),
-    restore = async ({ arg:name, res, state }) =>
+    restore = async ({ func:name, res, state }) =>
         res.concat(await state.get(name)),
-    split = ({ arg:pipe, res, state }) =>
+    split = ({ func:pipe, res, state }) =>
         res.concat(res[0].map( arg => pipe.execute(arg, state))),
     tracing = args => trace && cDebug('>>> trace <<<\n', args) || true,
     ok = res => res && res.every(v => v !== null),
 
     execute = (input, state=new Map()) =>
-        pipeline.reduce( (promise, { action, arg }) => promise
+        pipeline.reduce( (promise, { method, func }) => promise
             .then( res =>
-                tracing({ method:action, func:arg, input:res, plus:input }) &&
-                ok(res) && action({ arg, res, state, input }) )
-            .catch( error => errorHandler({ method:action, func:arg, input, error }) )
+                tracing({ method, func, input:res, plus:input }) &&
+                ok(res) && method({ func, res, state, input }) )
+            .catch( error => errorHandler({ method, func, input, error }) )
             , Promise.resolve([input]) )
     //
-    const ppl = (action, arg) => pipeline.push({ action, arg })
+    const ppl = (method, func) => pipeline.push({ method, func })
     return {
         add: function(...pipes) { ppl(run, pipes); return this },
         store: function(pipe) { ppl(store, pipe); return this },
