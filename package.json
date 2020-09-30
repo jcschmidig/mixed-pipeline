@@ -1,6 +1,6 @@
 {
   "name": "mixed-pipeline",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "Pipeline to process synchronous and asynchronous functions",
   "main": "index.js",
   "files": ["index.js", "readme.md"],
