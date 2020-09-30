@@ -20,9 +20,9 @@ module.exports = function(errHandler=cError, tracingActive=false) {
     execute = (input, state=new Map()) =>
         pipeline.reduce( (promise, { method, func }) => promise
             .then( res => ok(res) && (
-                trace({ method, func, input:[...res, input] }),
+                void trace({ method, func, input:[...res, input] }),
                 method({ func, res, input, state }) ))
-            .catch( err => { errHandler({ method, func, input, err }) }) )
+            .catch( err => void errHandler({ method, func, input, err }) ))
     //
     const ppl = (method, func) => pipeline.push({ method, func })
     return {
