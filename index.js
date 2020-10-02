@@ -3,7 +3,7 @@
 const { error:cError, debug:cDebug} = console
 
 module.exports = function(errHandler=cError, tracingActive=false) {
-    const pipeline = [ Promise.resolve([]) ],
+    const pipeline = new Array(),
 
     actionPipe = (action, res, input) =>
         Promise.resolve(action(...res, input)),
@@ -22,17 +22,22 @@ module.exports = function(errHandler=cError, tracingActive=false) {
     split = ({ func:pipe, res:[args], state }) =>
         args.map( arg => pipe.execute(arg, state) ),
 
+    processStart = Promise.resolve(new Array()),
     trace = args => tracingActive && cDebug('>>> trace <<<\n', args),
     pipelineIsOk = res => !(res === undefined || res.includes(null)),
 
-    execute = (input, state=new Map()) =>
-        pipeline.reduce( (promise, { method, func }) => promise
-            .then( res => {
-                if (pipelineIsOk(res)) {
-                    trace({ method, func, input:[...res, input] })
-                    return method({ func, res, input, state })
-                } })
-            .catch( err => void errHandler({ method, func, input, err }) ))
+    processPipe = (method, func, input, res, state) => {
+        if (pipelineIsOk(res)) {
+            trace({ method, func, input:[...res, input] })
+            return method({ func, res, input, state })
+        }
+    },
+
+    execute = (input, state=new Map()) => void
+        pipeline.reduce( (pipe, { method, func }) =>
+            pipe.then( res => processPipe(method, func, input, res, state) )
+                .catch( err => void errHandler({ method, func, input, err }) )
+            , processStart )
     //
     const ppl = (method, func) => pipeline.push({ method, func })
     return {
