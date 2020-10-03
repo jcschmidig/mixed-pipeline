@@ -1,49 +1,48 @@
 "use strict"
 
-const { error:cError, debug:cDebug} = console
+module.exports = pipeline
 
-module.exports = function(errHandler=cError, tracingActive=false) {
+const { error:cError, debug:cDebug } = console,
+doAction = (action, res, input) =>
+    Promise.resolve(action(...res, input)),
+
+run = ({ arg:pipes, res, input }) =>
+    Promise.all(pipes.map( pipe => doAction(pipe, res, input) )),
+
+store = ({ arg:funcs, res, input, state }) => (
+    void funcs.map( func => state.set(func.name, doAction(func, res, input)) ),
+    res ),
+
+restore = ({ arg:funcs, res, state }) =>
+    Promise.all(funcs.map( ({name}) => state.get(name) ))
+           .then( actions => [ ...res, ...actions ] ),
+
+split = ({ arg:pipe, res:[args], state }) =>
+    args.map( arg => pipe.execute(arg, state) ),
+
+doTrace = (trace, args) => trace && cDebug('>>> trace <<<\n', args),
+pplIsOk = res => !(res === undefined || res === false || res.includes(null)),
+
+doProcess = (trace, { method, arg }, input, res, state) =>
+    pplIsOk(res) && (
+        void doTrace(trace, { method, arg, input:[...res, input] }),
+        method({ arg, res, input, state }) )
+
+function pipeline(errHandler=cError, trace=false) {
     const pipeline = new Array(),
+    pipeStart = Promise.resolve(new Array()),
 
-    actionPipe = (action, res, input) =>
-        Promise.resolve(action(...res, input)),
-
-    run = ({ func:pipes, res, input }) =>
-        Promise.all(pipes.map( pipe => actionPipe(pipe, res, input) )),
-
-    store = ({ func:{name}, func, res, input, state }) => {
-        state.set(name, actionPipe(func, res, input))
-        return res
-    },
-
-    restore = ({ func:{name}, res, state }) =>
-        state.get(name).then(action => [ ...res, action ]),
-
-    split = ({ func:pipe, res:[args], state }) =>
-        args.map( arg => pipe.execute(arg, state) ),
-
-    processStart = Promise.resolve(new Array()),
-    trace = args => tracingActive && cDebug('>>> trace <<<\n', args),
-    pipelineIsOk = res => !(res === undefined || res.includes(null)),
-
-    processPipe = (method, func, input, res, state) => {
-        if (pipelineIsOk(res)) {
-            trace({ method, func, input:[...res, input] })
-            return method({ func, res, input, state })
-        }
-    },
-
-    execute = (input, state=new Map()) => void
-        pipeline.reduce( (pipe, { method, func }) =>
-            pipe.then( res => processPipe(method, func, input, res, state) )
-                .catch( err => void errHandler({ method, func, input, err }) )
-            , processStart )
+    execute = (input, state=new Map()) => void pipeline.reduce(
+        (pipe, process) => pipe
+            .then( res => doProcess(trace, process, input, res, state) )
+            .catch( err => void errHandler({ ...process, input, err }) )
+        , pipeStart )
     //
-    const ppl = (method, func) => pipeline.push({ method, func })
+    const ppl = (method, arg) => pipeline.push({ method, arg })
     return {
         add: function(...pipes) { ppl(run, pipes); return this },
-        store: function(pipe) { ppl(store, pipe); return this },
-        restore: function(pipe) { ppl(restore, pipe); return this },
+        store: function(...pipes) { ppl(store, pipes); return this },
+        restore: function(...pipes) { ppl(restore, pipes); return this },
         split: function(pipe) { ppl(split, pipe); return this },
         execute
     }

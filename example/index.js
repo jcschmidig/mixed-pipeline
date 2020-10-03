@@ -1,8 +1,11 @@
 "use strict"
 
-const pipe = require("../index.js")
+const pipe = require("..")
 const { join } = require('path')
-const { readdir, readFile, writeFile, unlink } = require('fs/promises')
+const { readdir:readDirectory,
+		readFile,
+		writeFile,
+		unlink:deleteFile } = require('fs/promises')
 const { error:displayError } = console
 
 if (!String.prototype.replaceAll) {
@@ -11,9 +14,8 @@ if (!String.prototype.replaceAll) {
 	}
 }
 
-const curDir = join(process.cwd(), 'example')
-const PATH_PACKAGES = join(curDir, 'packages')
-const TEMPLATE_FILENAME = join(curDir, 'config.template')
+const PATH_PACKAGES = join(__dirname, 'packages')
+const TEMPLATE_FILENAME = join(__dirname, 'config.template')
 const CONFIG_NAME = 'config.js'
 const CONF_MARKER = '$npm_package_config_'
 const UTF = 'utf8'
@@ -33,7 +35,7 @@ const noop = () => {}
 const getTemplate = () => readFile(TEMPLATE_FILENAME, UTF)
 
 // The starting point, uses the pipeline input to find the subdirs
-const findPackages = dir => readdir(dir, { withFileTypes: true })
+const findPackages = dir => readDirectory(dir, { withFileTypes: true })
 
 // Filters the directories and extracts the path names
 const getPaths = (entries, dir) =>
@@ -43,7 +45,7 @@ const getPaths = (entries, dir) =>
 
 // deletes already stored package files, ignoring any errors
 const deleteOldConfigFile = (packagePath) =>
-    unlink(join(packagePath, PACKAGE_NAME)).catch( noop )
+    deleteFile(join(packagePath, PACKAGE_NAME)).catch( noop )
 
 // reads the config file of the package => example/<package>/config.js
 const getNewConfig = (_, packagePath) =>
@@ -69,7 +71,7 @@ const displaySuccess = configOutput => display(JSON.parse(configOutput).name)
 
 // Splitted pipeline, runs for every path found in the main pipeline
 const plProcess = pipe(displayError, true)
-    .add(deleteOldConfigFile)
+	.add(deleteOldConfigFile)
     .add(getNewConfig)
     .restore(getTemplate)
     .add(convertConfig)
