@@ -8,6 +8,7 @@ doAction = (action, res, input) =>
 
 run = ({ arg:pipes, res, input }) =>
     Promise.all(pipes.map( pipe => doAction(pipe, res, input) )),
+runEx = args => ( void run(args), args.res ),
 
 store = ({ arg:funcs, res, input, state }) => (
     void funcs.map( func => state.set(func.name, doAction(func, res, input)) ),
@@ -21,7 +22,7 @@ split = ({ arg:pipe, res:[args], state }) =>
     args.map( arg => pipe.execute(arg, state) ),
 
 doTrace = (trace, args) => trace && cDebug('>>> trace <<<\n', args),
-pplIsOk = res => !(res === undefined || res === false || res.includes(null)),
+pplIsOk = res => Array.isArray(res) && !res.includes(null),
 
 doProcess = (trace, { method, arg }, input, res, state) =>
     pplIsOk(res) && (
@@ -40,7 +41,8 @@ function pipeline(errHandler=cError, trace=false) {
     //
     const ppl = (method, arg) => pipeline.push({ method, arg })
     return {
-        add: function(...pipes) { ppl(run, pipes); return this },
+        run: function(...pipes) { ppl(run, pipes); return this },
+        runShadow: function(...pipes) { ppl(runEx, pipes); return this },
         store: function(...pipes) { ppl(store, pipes); return this },
         restore: function(...pipes) { ppl(restore, pipes); return this },
         split: function(pipe) { ppl(split, pipe); return this },

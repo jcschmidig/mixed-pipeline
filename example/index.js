@@ -45,10 +45,10 @@ const getPaths = (entries, dir) =>
 
 // deletes already stored package files, ignoring any errors
 const deleteOldConfigFile = (packagePath) =>
-    deleteFile(join(packagePath, PACKAGE_NAME)).catch( noop )
+    void deleteFile(join(packagePath, PACKAGE_NAME)).catch( noop )
 
 // reads the config file of the package => example/<package>/config.js
-const getNewConfig = (_, packagePath) =>
+const getNewConfig = (packagePath) =>
     require(join(packagePath, CONFIG_NAME))
 
 // Gets the input from getConfig and getTemplate (added via restore)
@@ -71,17 +71,17 @@ const displaySuccess = configOutput => display(JSON.parse(configOutput).name)
 
 // Splitted pipeline, runs for every path found in the main pipeline
 const plProcess = pipe(displayError, true)
-	.add(deleteOldConfigFile)
-    .add(getNewConfig)
+	.runShadow(deleteOldConfigFile)
+    .run(getNewConfig)
     .restore(getTemplate)
-    .add(convertConfig)
-    .add(writeConfig, displaySuccess)
+    .run(convertConfig)
+    .run(writeConfig, displaySuccess)
 
 // Main pipeline
 const plFind = pipe(displayError, true)
 	.store(getTemplate)
-	.add(findPackages)
-	.add(getPaths)
+	.run(findPackages)
+	.run(getPaths)
 	.split(plProcess)  // => see above
 
 /*
