@@ -1,7 +1,10 @@
 {
   "name": "mixed-pipeline",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Pipeline to process synchronous and asynchronous functions",
+  "engines": {
+    "node": ">=11.13.0"
+  },
   "main": "index.js",
   "files": ["index.js", "readme.md"],
   "scripts": {

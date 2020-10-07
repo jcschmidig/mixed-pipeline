@@ -4,7 +4,7 @@ module.exports = pipeline
 
 const { error:cError, debug:cDebug } = console,
 
-// Ensures that any action returns as a promise
+// Ensures that every action returns as a promise
 doAction = (action, res, input) =>
     Promise.resolve(action(...res, input)),
 
@@ -40,7 +40,7 @@ doProcess = (trace, { method, arg }, input, res, state) =>
 
 // initializes the pipeline
 function pipeline(options={ errHandler:cError, trace:false }) {
-    // checks the optons
+    // checks the options
     const { errHandler=cError, trace=false } = options,
     // instantiates the pipeline array with an empty promise
     pipeline = new Array(Promise.resolve(new Array())),

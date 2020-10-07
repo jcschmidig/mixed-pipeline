@@ -14,16 +14,20 @@ You can use promise based functions as you would use synchronous ones and error 
 
 Just write pure functions and let the pipeline handle the rest.
 
-### 2. Installation
+### 2. Prerequisites
+
+This package needs node above version 11.12.
+
+### 3. Installation
 
 `npm install mixed-pipeline`
 
-### 3. Initialization
+### 4. Initialization
 
 `const pipe = require('mixed-pipeline')`
 
-### 4. API
-#### 4.1 Building the Pipeline
+### 5. API
+#### 5.1 Building the Pipeline
 - `*constructor({ errHandler: <errHandler>, trace: <true|false> })`: adds a custom errorHandler to the pipeline (default: `console.error`) and a flag to print the pipeline's trace (default: `false`).
 - `run(<function>, ...)`: runs the function(s) in the pipeline. All these functions will be executed concurrently and get the same input from the previous function(s). The output goes to the following function(s) in the same order.
 - `runShadow(<function>, ...)`: runs the function(s) without changing the pipeline's input and output.
@@ -31,14 +35,14 @@ Just write pure functions and let the pipeline handle the rest.
 - `restore(<function>, ...)`: adds the output of the previously stored function(s) to the pipeline as if it had been produced concurrently with the function(s) before.
 - `split(<pipeline>)`: adds a new pipeline which will be executed for every element of the output array of the previous function.
 
-#### 4.2 Executing the Pipeline
+#### 5.2 Executing the Pipeline
 - `execute(input)`: Executes the pipeline with the given input. This input is also given to any following function(s) as last argument.
 
-#### 4.3 Breaking conditions
+#### 5.3 Breaking conditions
 - Any error catched by the pipeline aborts the pipeline currently being executed.
 - Any function returning `null` aborts the pipeline currently being executed.
 
-### 5 Example
+### 6 Example
 
 The repo contains an example. To see it in action
 - clone the repo
