@@ -32,8 +32,8 @@ methods = {
         args.map( arg => pipeline.execute(arg, state) ),
 
     // traces the input parameters being consumed by the next method
-    trace: ({ res, input }) => ( void
-        cDebug('>>> trace\n', { input: [...res, input] }), res )
+    trace: ({ arg:[comment='trace'], res, input }) => ( void
+        cDebug(`>>> ${comment}\n`, { input: [...res, input] }), res )
 },
 
 // checks if the current pipe is ok

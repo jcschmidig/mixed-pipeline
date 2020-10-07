@@ -70,7 +70,6 @@ const displaySuccess = configOutput => display(JSON.parse(configOutput).name)
 
 // Splitted pipeline, runs for every path found in the main pipeline
 const plProcess = pipe()
-	.trace()
 	.runShadow(deleteOldConfigFile)
     .run(getNewConfig)
     .restore(getTemplate)
@@ -82,7 +81,7 @@ const plFind = pipe()
 	.store(getTemplate)
 	.run(findPackages)
 	.run(getPaths)
-	.trace()
+	.trace('found paths:')
 	.split(plProcess)  // => see above
 
 /*
