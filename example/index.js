@@ -21,7 +21,6 @@ const UTF = 'utf8'
 const PACKAGE_NAME = 'config.json'
 const MESSAGE = dir => `${dir}'s ${PACKAGE_NAME} successfully written!`
 const display = arg => arg && console.log(MESSAGE(arg))
-const options = { trace: true }
 const noop = () => {}
 
 /*
@@ -71,6 +70,7 @@ const displaySuccess = configOutput => display(JSON.parse(configOutput).name)
 
 // Splitted pipeline, runs for every path found in the main pipeline
 const plProcess = pipe()
+	.trace()
 	.runShadow(deleteOldConfigFile)
     .run(getNewConfig)
     .restore(getTemplate)
@@ -78,10 +78,11 @@ const plProcess = pipe()
     .runShadow(writeConfig, displaySuccess)
 
 // Main pipeline
-const plFind = pipe(options)
+const plFind = pipe()
 	.store(getTemplate)
 	.run(findPackages)
 	.run(getPaths)
+	.trace()
 	.split(plProcess)  // => see above
 
 /*
