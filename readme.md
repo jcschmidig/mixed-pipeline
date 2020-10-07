@@ -24,7 +24,7 @@ Just write pure functions and let the pipeline handle the rest.
 
 ### 4. API
 #### 4.1 Building the Pipeline
-- `*constructor(<errorHander>, <trace>)`: adds a custom errorHandler to the pipeline (default: `console.error`) and a flag to print the pipeline's trace (default: `false`).
+- `*constructor({ errHandler: <errHandler>, trace: <true|false> })`: adds a custom errorHandler to the pipeline (default: `console.error`) and a flag to print the pipeline's trace (default: `false`).
 - `run(<function>, ...)`: runs the function(s) in the pipeline. All these functions will be executed concurrently and get the same input from the previous function(s). The output goes to the following function(s) in the same order.
 - `runShadow(<function>, ...)`: runs the function(s) without changing the pipeline's input and output.
 - `store(<function>, ...)`: stores the output of the concurrently executed function(s) as an intermediate result without injecting the output to the pipeline.
