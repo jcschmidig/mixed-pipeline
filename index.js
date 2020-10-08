@@ -31,7 +31,7 @@
 
 module.exports = function( errHandler = console.error ) {
     const
-    // instantiates the pipeline array with a promise of an empty array
+    // instantiates the pipeline array
     pipeline = new Array( Promise.resolve(new Array()) ),
 
     // adds a process item to the pipeline
@@ -40,16 +40,16 @@ module.exports = function( errHandler = console.error ) {
     // processes the pipeline by injecting the results
     // of the previous to the next item
     execute = (
-        input,              // the pipeline's input given to all process items
-        state = new Map()   // holds the stored functions for all pipelines
+        $input,             // the pipeline's input given to all process items
+        $state = new Map()  // holds the stored functions for all pipelines
         //
     ) => void pipeline.reduce(
         (pipe, process) => pipe
             // waits for the promise to be resolved and gives the result
             // to the next process item
-            .then( res => doProcess(process, input, res, state) )
+            .then( res => doProcess(process, $input, res, $state) )
             // catches any error occurring during the pipeline's processing
-            .catch( err => void errHandler({ ...process, input, err }) ))
+            .catch( err => void errHandler({ ...process, $input, err }) ))
 
     // exposes the module's interface with all methods defined below
     return methods.reduce(
@@ -64,7 +64,8 @@ module.exports = function( errHandler = console.error ) {
                 }
             )
         // initial value of $interface
-        , { execute } )
+        , { execute }
+    )
 }
 
 // processes the current item of the pipeline
@@ -73,7 +74,9 @@ function doProcess({ method, arg }, input, res, state) {
     return pplIsOk(res) && method({ arg, res, input, state })
 }
 // checks if the result of the current pipe is ok
-function pplIsOk(res) { return Array.isArray(res) && !res.includes(null) }
+function pplIsOk(res) {
+    return Array.isArray(res) && !res.includes(null)
+}
 
 const
 // ensures that every action returns as a promise
@@ -94,7 +97,7 @@ methods = [
     },
     // runs the pipe ignoring the result
     function runShadow(args) {
-        // uses the already defined function 'run'
+        // calls the already defined function 'run'
         method('run', args)
         return args.res
     },
