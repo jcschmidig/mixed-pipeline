@@ -7,34 +7,42 @@ const { error:cError, debug:cDebug } = console,
 // Ensures that every action returns as a promise
 doAction = (action, res, input) =>
     Promise.resolve(action(...res, input)),
-// runs all functions in the pipe concurrently
-doRun = ({ arg:funcs, res, input }) =>
-    Promise.all(funcs.map( func => doAction(func, res, input) )),
 
-methods = {
-    run: doRun,
+method = (name, args) => methods.find(method => method.name === name)(args),
+methods = [
+    // runs all functions in the pipe concurrently
+    function run({ arg:funcs, res, input }) {
+        return Promise.all(funcs.map( func => doAction(func, res, input) ))
+    },
     // runs the pipe ignoring the result
-    runShadow: args => ( void doRun(args), args.res ),
+    function runShadow(args) {
+        method('run', args)
+        return args.res
+    },
 
     // stores the result of the function(s) in the state Map
-    store: ({ arg:funcs, res, input, state }) => (
-        void funcs.map( func =>
-            state.set(func.name, doAction(func, res, input)) )
-        , res ),
+    function store({ arg:funcs, res, input, state }) {
+        funcs.map( func => state.set(func.name, doAction(func, res, input)) )
+        return res
+    },
     // inserts the stored function(s) of the state Map into the pipe
-    restore: ({ arg:funcs, res, state }) =>
-        Promise.all(funcs.map( ({name}) => state.get(name) ))
-               .then( actions => [ ...res, ...actions ] ),
+    function restore({ arg:funcs, res, state }) {
+        return Promise.all(funcs.map( ({name}) => state.get(name) ))
+                      .then( actions => [ ...res, ...actions ] )
+    },
 
     // takes the array of a resulting function and executes the defined pipeline
     // for every item
-    split: ({ arg:[pipeline], res:[args], state }) =>
-        args.map( arg => pipeline.execute(arg, state) ),
+    function split({ arg:[pipeline], res:[args], state }) {
+        return args.map( arg => pipeline.execute(arg, state) )
+    },
 
     // traces the input parameters being consumed by the next method
-    trace: ({ arg:[comment='trace'], res, input }) => ( void
-        cDebug(`>>> ${comment}\n`, { input: [...res, input] }), res )
-},
+    function trace({ arg:[comment='trace'], res, input }) {
+        cDebug(`>>> ${comment}\n`, { input: [...res, input] }, '\n')
+        return res
+    }
+],
 
 // checks if the current pipe is ok
 pplIsOk = res => Array.isArray(res) && !res.includes(null),
@@ -59,12 +67,12 @@ function pipeline( errHandler = cError ) {
             .catch( err => void errHandler({ ...process, input, err }) ))
 
     // exposes the interface with all methods
-    return Object.entries(methods).reduce(
-        (out, [name, method]) =>
+    return methods.reduce(
+        (out, method) =>
             // define a property for every method
             Object.defineProperty(
                 out,
-                name,
+                method.name,
                 // adds the method to the pipeline,
                 // returns the whole pipeline offering the methods be be chained
                 { value: function(...arg) { pipeline.push({ method, arg });
