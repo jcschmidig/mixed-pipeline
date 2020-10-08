@@ -30,48 +30,63 @@
  */
 
 module.exports = function( errHandler = console.error ) {
-    // instantiates the pipeline array with an empty promise
-    const pipeline = new Array(Promise.resolve(new Array())),
+    const
+    // instantiates the pipeline array with a promise of an empty array
+    pipeline = new Array( Promise.resolve(new Array()) ),
 
-    // processes the pipeline by injecting the results to the next item
-    execute = (input, state=new Map()) => void pipeline.reduce(
+    // adds a process item to the pipeline
+    add = (method, arg) => pipeline.push({ method, arg }),
+
+    // processes the pipeline by injecting the results
+    // of the previous to the next item
+    execute = (
+        input,              // the pipeline's input given to all process items
+        state = new Map()   // holds the stored functions for all pipelines
+        //
+    ) => void pipeline.reduce(
         (pipe, process) => pipe
             // waits for the promise to be resolved and gives the result
-            // to the next item
+            // to the next process item
             .then( res => doProcess(process, input, res, state) )
             // catches any error occurring during the pipeline's processing
             .catch( err => void errHandler({ ...process, input, err }) ))
 
-    // exposes the interface with all methods defined below
+    // exposes the module's interface with all methods defined below
     return methods.reduce(
-        (out, method) =>
+        ($interface, method) =>
             // define a property for every method
             Object.defineProperty(
-                out,
+                $interface,
                 method.name,
-                // adds the method to the pipeline,
-                // returns the whole pipeline offering the methods be be chained
-                { value: function(...arg) { pipeline.push({ method, arg });
-                                            return this } }
+                // adds method and arguments to the pipeline,
+                {
+                    value: function(...arg) { add(method, arg); return this }
+                }
             )
-        // initial value for out
+        // initial value of $interface
         , { execute } )
 }
 
 // processes the current item of the pipeline
 function doProcess({ method, arg }, input, res, state) {
-    // method is one of the methods below
+    // check and execute the method (one of the methods below)
     return pplIsOk(res) && method({ arg, res, input, state })
 }
 // checks if the result of the current pipe is ok
 function pplIsOk(res) { return Array.isArray(res) && !res.includes(null) }
 
 const
-// Ensures that every action returns as a promise
+// ensures that every action returns as a promise
 doAction = (action, res, input) =>
     Promise.resolve(action(...res, input)),
 
+// allows a method to be called from within another method
 method = (name, args) => methods.find(method => method.name === name)(args),
+
+// this array has two purposes (see exported function)
+//  - the method definition is used to build the pipeline's interface
+//  - the method body is being executed while processing the pipeline
+// !! every method defined here is automatically populated to the interface !!
 methods = [
     // runs all functions in the pipe concurrently
     function run({ arg:funcs, res, input }) {
@@ -79,6 +94,7 @@ methods = [
     },
     // runs the pipe ignoring the result
     function runShadow(args) {
+        // uses the already defined function 'run'
         method('run', args)
         return args.res
     },
@@ -94,15 +110,15 @@ methods = [
                       .then( actions => [ ...res, ...actions ] )
     },
 
-    // takes the array of a resulting function and executes the defined pipeline
-    // for every item
+    // takes the array of a resulting function and executes
+    // the defined pipeline for every item
     function split({ arg:[pipeline], res:[args], state }) {
         return args.map( arg => pipeline.execute(arg, state) )
     },
 
     // traces the input parameters being consumed by the next method
-    function trace({ arg:[comment='trace'], res, input }) {
-        console.debug(`>>> ${comment}\n`, { input: [...res, input] }, '\n')
+    function trace({ arg:[comment = '>>> trace'], res, input }) {
+        console.debug(`${comment}\n`, { input: [ ...res, input ] }, '\n')
         return res
     }
 ]
