@@ -50,3 +50,31 @@ The repo contains an example. To see it in action
 - run `npm run example`
 
 It reads the directory structure and writes several config.json file by merging a template with the corresponding config options.
+
+#### 6.1 Simplified example
+
+```
+import fs from 'fs/promises'
+import pipeline from 'mixed-pipeline'
+
+pipeline()
+    .store(getTemplate)
+    .run(findPaths)     // returns an array of subPaths
+    .split(pipeline()   // executes a new pipeline for every subPath
+        .restore(getTemplate)
+        .run(writeConfig)
+    )
+.execute("/myPath")     // starts the pipeline with the given path
+
+function getTemplate(path) {
+    return readFile(path+'/template.json')
+}
+
+function findPaths(path) {
+    return fs.readdir(path)
+}
+
+function writeConfig(template, subPath) {
+    void fs.writeFile(subPath+'/config.json', template)
+}
+```
