@@ -67,7 +67,7 @@ pipeline()
 .execute("/myPath")     // starts the pipeline with the given path
 
 function getTemplate(path) {
-    return readFile(path+'/template.json')
+    return fs.readFile(path+'/template.json')
 }
 
 function findPaths(path) {
