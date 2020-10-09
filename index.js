@@ -49,23 +49,17 @@ module.exports = function( errHandler = console.error ) {
             // to the next process item
             .then( res => doProcess(process, $input, res, $state) )
             // catches any error occurring during the pipeline's processing
-            .catch( err => void errHandler({ ...process, $input, err }) ))
+            .catch( err => void errHandler({ ...process, $input, err }) )),
+
+    // adds method and arguments to the pipeline,
+    createMethod = method => function(...arg) { add(method, arg); return this },
+    createProp = method => ({ value: createMethod(method), writable: false }),
+    // define interface's property for given method
+    createInterface = (properties, method) =>
+        Object.defineProperty( properties, method.name, createProp(method) )
 
     // exposes the module's interface with all methods defined below
-    return methods.reduce(
-        ($interface, method) =>
-            // define a property for every method
-            Object.defineProperty(
-                $interface,
-                method.name,
-                // adds method and arguments to the pipeline,
-                {
-                    value: function(...arg) { add(method, arg); return this }
-                }
-            )
-        // initial value of $interface
-        , { execute }
-    )
+    return methods.reduce( createInterface, { execute } )
 }
 
 // processes the current item of the pipeline
