@@ -43,13 +43,15 @@ module.exports = function( errHandler = console.error ) {
         $input,             // the pipeline's input given to all process items
         $state = new Map()  // holds the stored functions for all pipelines
         //
-    ) => void pipeline.reduce(
-        (pipe, process) => pipe
-            // waits for the promise to be resolved and gives the result
-            // to the next process item
-            .then( res => doProcess(process, $input, res, $state) )
-            // catches any error occurring during the pipeline's processing
-            .catch( err => void errHandler({ ...process, $input, err }) )),
+    ) => void process(
+            pipeline,
+            (pipe, item) => pipe
+                // waits for the promise to be resolved and gives the result
+                // to the next process item
+                .then( res => doProcess(item, $input, res, $state) )
+                // catches any error occurring during the pipeline's processing
+                .catch( err => void errHandler({ ...item, $input, err }) )
+        ),
 
     // adds method and arguments to the pipeline,
     createMethod = method => function(...arg) { add(method, arg); return this },
@@ -59,20 +61,21 @@ module.exports = function( errHandler = console.error ) {
         Object.defineProperty( properties, method.name, createProp(method) )
 
     // exposes the module's interface with all methods defined below
-    return methods.reduce( createInterface, { execute } )
-}
-
-// processes the current item of the pipeline
-function doProcess({ method, arg }, input, res, state) {
-    // check and execute the method (one of the methods below)
-    return pplIsOk(res) && method({ arg, res, input, state })
-}
-// checks if the result of the current pipe is ok
-function pplIsOk(res) {
-    return Array.isArray(res) && !res.includes(null)
+    return process(methods, createInterface, { execute } )
 }
 
 const
+process = (obj, ...args) => Array.prototype.reduce.apply(obj, args),
+
+// processes the current item of the pipeline
+doProcess = ({ method, arg }, input, res, state) =>
+    // check and execute the method (one of the methods below)
+    pplIsOk(res) && method({ arg, res, input, state }),
+
+// checks if the result of the current pipe is ok
+pplIsOk = (res) =>
+    Array.isArray(res) && !res.includes(null),
+
 // ensures that every action returns as a promise
 doAction = (action, res, input) =>
     Promise.resolve(action(...res, input)),
