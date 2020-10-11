@@ -36,11 +36,12 @@ module.exports = function( errHandler = console.error ) {
         Object.defineProperty( properties, method.name, createProp(method) )
 
     // exposes the module's interface with all methods defined below
-    return process(methods, createInterface, { execute } )
+    return process(methods, createInterface, { execute })
 }
 
 const
 process = (obj, ...args) => Array.prototype.reduce.apply(obj, args),
+{ debug:cDebug } = console,
 
 // processes the current item of the pipeline
 processItem = ({ method, arg }, input, res, state) =>
@@ -85,8 +86,8 @@ methods = [
     },
 
     // traces the input parameters being consumed by the next method
-    function trace({ arg:[comment = '>>> trace'], res, input }) {
-        console.debug(`${comment}\n`, { input: [ ...res, input ] }, '\n')
+    function trace({ arg:[comment='>>> trace', output=debug], res, input }) {
+        output(comment, { input: [ ...res, input ] })
         return res
     }
 ],
@@ -105,4 +106,6 @@ pack = (state, res, input) =>
 
 unpack = state => func => state.get(func.name),
 
-execPipeline = (pipeline, state) => input => pipeline.execute(input, state)
+execPipeline = (pipeline, state) => input => pipeline.execute(input, state),
+
+debug = (comment, arg) => console.debug(`${comment}\n`, arg, '\n')
