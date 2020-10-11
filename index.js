@@ -7,10 +7,10 @@
 module.exports = function( errHandler = console.error ) {
     const
     // instantiates the pipeline array
-    pipeline = new Array( Promise.resolve(new Array()) ),
+    pipeline = new Array(),
 
     // adds a process item to the pipeline
-    add = (method, arg) => pipeline.push({ method, arg }),
+    add = (method, arg) => void pipeline.push({ method, arg }),
 
     // processes the pipeline by injecting the results
     // of the previous to the next item
@@ -18,14 +18,15 @@ module.exports = function( errHandler = console.error ) {
         $input,             // the pipeline's input given to all process items
         $state = new Map()  // holds the stored functions for all pipelines
         //
-    ) => void process(
-        pipeline,
-        (pipe, item) => pipe
-            // waits for the promise to be resolved and gives the result
-            // to the next process item
-            .then( res => processItem(item, $input, res, $state) )
-            // catches any error occurring during the pipeline's processing
-            .catch( err => void errHandler({ ...item, input:$input, err }) )
+    ) => void pipeline.reduce(
+        // process every item of the pipleline turn over the result to the next
+        async (pipe, item, res) => {
+            try { res = processItem(item, $input, await pipe, $state) }
+            catch(err) { res = void errHandler({ ...item, input:$input, err }) }
+            return res
+        },
+        // starting with an empty result
+        []
     ),
 
     // adds method and arguments to the pipeline,
@@ -36,13 +37,10 @@ module.exports = function( errHandler = console.error ) {
         Object.defineProperty( properties, method.name, createProp(method) )
 
     // exposes the module's interface with all methods defined below
-    return process(methods, createInterface, { execute })
+    return methods.reduce(createInterface, { execute })
 }
 
 const
-process = (obj, ...args) => Array.prototype.reduce.apply(obj, args),
-{ debug:cDebug } = console,
-
 // processes the current item of the pipeline
 processItem = ({ method, arg }, input, res, state) =>
     // check and execute the method (one of the methods below)
@@ -59,11 +57,10 @@ pipelineIsOk = (res) =>
 methods = [
     // runs all functions in the pipe concurrently
     function run({ arg:funcs, res, input }) {
-        return Promise.all( funcs.map( runFunction(res, input) ))
+        return funcs.concurrent(runFunction, res, input)
     },
     // runs the pipe ignoring the result
     function runShadow(args) {
-        // calls the already defined function 'run'
         callMethod('run', args)
         return args.res
     },
@@ -75,8 +72,8 @@ methods = [
     },
     // restores the requested results of the state Map into the pipe
     function restore({ arg:funcs, res, state }) {
-        return Promise.all( funcs.map( unpack(state) ))
-                      .then( states => [ ...res, ...states ] )
+        return funcs.concurrent(unpack, state)
+            .then( states => [ ...res, ...states ] )
     },
 
     // takes the array of a resulting function and executes
@@ -95,17 +92,17 @@ methods = [
 // allows a method to be called from within another method
 callMethod = (name, args) => methods.find(method => method.name === name)(args),
 
-// ensures that every func returns as a promise
-createPromise = (func, res, input) => Promise.resolve(func(...res, input)),
-
 // Helpers
-runFunction = (res, input) => func => createPromise(func, res, input),
+runFunction = (res, input) => func => func(...res, input),
 
-pack = (state, res, input) =>
-    func => state.set(func.name, createPromise(func, res, input)),
+pack = (state, res, input) => func => state.set(func.name, func(...res, input)),
 
 unpack = state => func => state.get(func.name),
 
 execPipeline = (pipeline, state) => input => pipeline.execute(input, state),
 
 debug = (comment, arg) => console.debug(`${comment}\n`, arg, '\n')
+
+Array.prototype.concurrent = function(action, ...args) {
+    return Promise.all( this.map( action(...args) ))
+}

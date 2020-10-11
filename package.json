@@ -1,20 +1,29 @@
 {
   "name": "mixed-pipeline",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "Pipeline to process synchronous and asynchronous functions",
   "engines": {
     "node": ">=11.13.0"
   },
   "main": "index.js",
-  "files": ["index.js", "readme.md"],
+  "files": [
+    "index.js",
+    "readme.md"
+  ],
   "scripts": {
-      "example": "node ./example/index.js"
+    "example": "node ./example/index.js"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jcschmidig/mixed-pipeline.git"
   },
-  "keywords": ["promise", "pipeline", "concurrent", "synchronous", "asynchronous"],
+  "keywords": [
+    "promise",
+    "pipeline",
+    "concurrent",
+    "synchronous",
+    "asynchronous"
+  ],
   "author": "Jean-Claude Schmidig",
   "license": "MIT",
   "bugs": {
