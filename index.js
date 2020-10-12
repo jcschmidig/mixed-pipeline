@@ -10,34 +10,43 @@ module.exports = function( errHandler = console.error ) {
     pipeline = new Array(),
 
     // adds a process item to the pipeline
-    add = (method, arg) => void pipeline.push({ method, arg }),
+    createMethod = method =>
+        function(...arg) {
+            pipeline.push({ method, arg })
+            return this
+        },
+    createProp = method => (
+        { value: createMethod(method), writable: false }
+    ),
+    // define interface's property for given method
+    createInterface = (properties, method) =>
+        Object.defineProperty(
+            properties,
+            method.name,
+            createProp(method)
+        ),
 
-    // processes the pipeline by injecting the results
-    // of the previous to the next item
+    // processes the pipeline
     execute = (
         $input,             // the pipeline's input given to all process items
         $state = new Map()  // holds the stored functions for all pipelines
         //
-    ) => void pipeline.reduce(
-        // process every item of the pipleline turn over the result to the next
+    ) => void pipeline.process(
+        // every item propagates the resulting pipe to the next one
         async (pipe, item, res) => {
-            try { res = processItem(item, $input, await pipe, $state) }
-            catch(err) { res = void errHandler({ ...item, input:$input, err }) }
+            try {
+                res = processItem(item, $input, await pipe, $state)
+            } catch(err) {
+                res = void errHandler({ ...item, input:$input, err })
+            }
             return res
         },
         // starting with an empty result
         []
-    ),
-
-    // adds method and arguments to the pipeline,
-    createMethod = method => function(...arg) { add(method, arg); return this },
-    createProp = method => ({ value: createMethod(method), writable: false }),
-    // define interface's property for given method
-    createInterface = (properties, method) =>
-        Object.defineProperty( properties, method.name, createProp(method) )
+    )
 
     // exposes the module's interface with all methods defined below
-    return methods.reduce(createInterface, { execute })
+    return methods.process(createInterface, { execute })
 }
 
 const
@@ -71,9 +80,9 @@ methods = [
         return res
     },
     // restores the requested results of the state Map into the pipe
-    function restore({ arg:funcs, res, state }) {
-        return funcs.concurrent(unpack, state)
-            .then( states => [ ...res, ...states ] )
+    async function restore({ arg:funcs, res, state }) {
+        return [ ...res,
+                 ...(await funcs.concurrent(unpack, state)) ]
     },
 
     // takes the array of a resulting function and executes
@@ -96,13 +105,13 @@ callMethod = (name, args) => methods.find(method => method.name === name)(args),
 runFunction = (res, input) => func => func(...res, input),
 
 pack = (state, res, input) => func => state.set(func.name, func(...res, input)),
-
 unpack = state => func => state.get(func.name),
 
 execPipeline = (pipeline, state) => input => pipeline.execute(input, state),
 
 debug = (comment, arg) => console.debug(`${comment}\n`, arg, '\n')
 
+Array.prototype.process = Array.prototype.reduce
 Array.prototype.concurrent = function(action, ...args) {
     return Promise.all( this.map( action(...args) ))
 }
