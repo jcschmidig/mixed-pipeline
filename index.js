@@ -15,15 +15,12 @@ module.exports = function( errHandler = console.error ) {
             pipeline.push({ method, arg })
             return this
         },
-    createProp = method => (
-        { value: createMethod(method), writable: false }
-    ),
     // define interface's property for given method
     createInterface = (properties, method) =>
         Object.defineProperty(
             properties,
             method.name,
-            createProp(method)
+            { value: createMethod(method) }
         ),
 
     // processes the pipeline
@@ -33,13 +30,13 @@ module.exports = function( errHandler = console.error ) {
         //
     ) => void pipeline.process(
         // every item propagates the resulting pipe to the next one
-        async (pipe, item, res) => {
+        async (pipe, item) => {
             try {
-                res = processItem(item, $input, await pipe, $state)
+                pipe = processItem(item, $input, await pipe, $state)
             } catch(err) {
-                res = void errHandler({ ...item, input:$input, err })
+                pipe = void errHandler({ ...item, input:$input, err })
             }
-            return res
+            return pipe
         },
         // starting with an empty result
         []
@@ -53,11 +50,10 @@ const
 // processes the current item of the pipeline
 processItem = ({ method, arg }, input, res, state) =>
     // check and execute the method (one of the methods below)
-    pipelineIsOk(res) && method({ arg, res, input, state }),
+    pipelineIsOk(res) && method.exec({ arg, res, input, state }),
 
 // checks if the result of the current pipe is ok
-pipelineIsOk = (res) =>
-    Array.isArray(res) && !res.includes(null),
+pipelineIsOk = (res) => Array.isArray(res) && !res.includes(null),
 
 // this array has two purposes (see exported function)
 //  - the method definition is used to build the pipeline's interface
@@ -99,19 +95,25 @@ methods = [
 ],
 
 // allows a method to be called from within another method
-callMethod = (name, args) => methods.find(method => method.name === name)(args),
+callMethod = (name, args) =>
+    methods.find(method => method.name === name)
+           .exec(args),
 
 // Helpers
-runFunction = (res, input) => func => func(...res, input),
+runFunction = (res, input) => func => func.exec(...res, input),
 
-pack = (state, res, input) => func => state.set(func.name, func(...res, input)),
+pack = (state, res, input) => func =>
+    state.set(func.name, func.exec(...res, input)),
 unpack = state => func => state.get(func.name),
 
 execPipeline = (pipeline, state) => input => pipeline.execute(input, state),
 
 debug = (comment, arg) => console.debug(`${comment}\n`, arg, '\n')
 
+Function.prototype.exec = function(...args) {
+    return this.apply(null, args)
+}
 Array.prototype.process = Array.prototype.reduce
 Array.prototype.concurrent = function(action, ...args) {
-    return Promise.all( this.map( action(...args) ))
+    return Promise.all( this.map( action.exec(...args) ))
 }
