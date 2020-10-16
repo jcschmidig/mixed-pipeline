@@ -9,25 +9,11 @@ module.exports = function( $errHandler = console.error ) {
     // instantiates the pipeline array
     $pipeline = new Array(),
 
-    // adds a process item to the pipeline
-    createMethod = method =>
-        function(...arg) {
-            $pipeline.push({ method, arg })
-            return this
-        },
-    // define interface's property for given method
-    createInterface = (properties, method) =>
-        Object.defineProperty(
-            properties,
-            method.name,
-            { value: createMethod(method) }
-        ),
-
     // executes the pipeline
     execute = handle($pipeline, $errHandler)
 
-    // exposes the module's interface with all methods defined below
-    return METHODS.process(createInterface, { execute })
+    // exposes the module's interface with all METHODS defined below
+    return METHODS.process( createInterface($pipeline), { execute } )
 }
 
 const
@@ -40,7 +26,7 @@ handlePipe = (input, state, errHandler) =>
             // every item propagates the resulting pipe to the next item
             pipe = processItem(item, input, await pipe, state)
         } catch(err) {
-            pipe = void errHandler({ ...item, input, err })
+            pipe = void errHandler.exec({ ...item, input, err })
         }
         return pipe
     },
@@ -56,6 +42,20 @@ pipelineIsOk = res =>
     Array.isArray(res) &&
     // not stopped by consumer
     !res.includes(null),
+
+// define interface's property for given method
+createInterface = pipeline => (properties, method) =>
+    Object.defineProperty(
+        properties,
+        method.name,
+        { value: createMethod(pipeline, method) }
+    ),
+// adds a process item to the pipeline
+createMethod = (pipeline, method) =>
+    function(...arg) {
+        pipeline.push({ method, arg })
+        return this
+    },
 
 // this array has two purposes (see exported function)
 //  - the method definition is used to build the pipeline's interface
@@ -79,8 +79,7 @@ METHODS = [
     },
     // restores the requested results of the state Map into the pipe
     async function restore({ arg:funcs, res, state }) {
-        return [ ...res,
-                 ...(await funcs.concurrent(unpack, state)) ]
+        return [ ...res, ...(await funcs.concurrent(unpack, state)) ]
     },
 
     // takes the array of a resulting function and executes
