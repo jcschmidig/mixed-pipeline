@@ -4,58 +4,38 @@
     Usage example: see https://github.com/jcschmidig/mixed-pipeline#readme
  */
 
-module.exports = function( $errHandler = console.error ) {
+module.exports = ( $errHandler = console.error ) => {
     const
-    // instantiates the pipeline array
     $pipeline = new Array(),
 
-    // executes the pipeline
-    execute = handle($pipeline, $errHandler)
-
-    // exposes the module's interface
-    return createInterface($pipeline, execute)
-}
-
-const
-handle = (pipeline, errHandler) => (input, state=new Map()) =>
-    void pipeline.process( handlePipe(input, state, errHandler) ),
-
-handlePipe = (input, state, errHandler) =>
-    async (pipe, item) => {
-        try {
-            // every item propagates the resulting pipe to the next item
-            pipe = processItem(item, input, await pipe, state)
-        } catch(err) {
-            pipe = void errHandler.exec({ ...item, input, err })
-        }
-        return pipe
-    },
-
-// processes the current item of the pipeline
-processItem = ({ method, arg }, input, res, state) =>
-    // check and execute the method (one of the METHODS below)
-    pipelineIsOk(res) && method.exec({ arg, res, input, state }),
-// checks if the result of the current pipe is ok
-pipelineIsOk = res =>
-    // no error catched
-    Array.isArray(res) &&
-    // not stopped by consumer
-    !res.includes(null),
-
-createInterface = (pipeline, execute) =>
-    // define interface properties for all METHODS
-    Object.defineProperties( { execute },
-        Object.fromEntries( METHODS.map( method =>
-            [ method.name, { value: createMethod(pipeline, method) } ]
-        ))
-    ),
-// adds a process item to the pipeline
-createMethod = (pipeline, method) =>
-    function(...arg) {
-        pipeline.push({ method, arg })
+    createFunc = method => function(...arg) {
+        // adds method and arguments to the pipeline
+        $pipeline.push({ method, arg })
         return this
     },
 
+    execute = (input, state=new Map()) => void $pipeline.process(
+        async (pipe, item) => {
+            try {
+                // every item propagates the resulting pipe to the next item
+                pipe = processItem(item, input, await pipe, state)
+            } catch(err) {
+                pipe = void $errHandler.exec({ ...item, input, err })
+            }
+            return pipe
+        }
+    )
+
+    return {
+        // adds the pipeline's EXECUTE method to the interface
+        execute,
+        // adds all other METHODS to the interface
+        ...Object.fromEntries( getMethods(createFunc) )
+    }
+}
+
+const
+getMethods = func => METHODS.map( method => [ method.name, func.exec(method) ]),
 // this array has two purposes (see exported function)
 //  - the method definition is used to build the pipeline's interface
 //  - the method body is being executed while processing the pipeline
@@ -98,6 +78,15 @@ METHODS = [
 callMethod = (name, args) =>
     METHODS.find(method => method.name === name)
            .exec(args),
+
+// processes the current item of the pipeline
+processItem = ({ method, arg }, input, res, state) =>
+    // check and execute the method (one of the METHODS below)
+    pipelineIsOk(res) && method.exec({ arg, res, input, state }),
+//
+pipelineIsOk = res =>
+    // no error catched & not stopped by consumer
+    Array.isArray(res) && !res.includes(null),
 
 // Helpers
 runFunction = (res, input) => func => func.exec(...res, input),
