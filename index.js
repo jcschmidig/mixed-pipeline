@@ -12,8 +12,8 @@ module.exports = function( $errHandler = console.error ) {
     // executes the pipeline
     execute = handle($pipeline, $errHandler)
 
-    // exposes the module's interface with all METHODS defined below
-    return METHODS.process( createInterface($pipeline), { execute } )
+    // exposes the module's interface
+    return createInterface($pipeline, execute)
 }
 
 const
@@ -33,9 +33,8 @@ handlePipe = (input, state, errHandler) =>
 
 // processes the current item of the pipeline
 processItem = ({ method, arg }, input, res, state) =>
-    // check and execute the method (one of the methods below)
+    // check and execute the method (one of the METHODS below)
     pipelineIsOk(res) && method.exec({ arg, res, input, state }),
-
 // checks if the result of the current pipe is ok
 pipelineIsOk = res =>
     // no error catched
@@ -43,12 +42,12 @@ pipelineIsOk = res =>
     // not stopped by consumer
     !res.includes(null),
 
-// define interface's property for given method
-createInterface = pipeline => (properties, method) =>
-    Object.defineProperty(
-        properties,
-        method.name,
-        { value: createMethod(pipeline, method) }
+createInterface = (pipeline, execute) =>
+    // define interface properties for all METHODS
+    Object.defineProperties( { execute },
+        Object.fromEntries( METHODS.map( method =>
+            [ method.name, { value: createMethod(pipeline, method) } ]
+        ))
     ),
 // adds a process item to the pipeline
 createMethod = (pipeline, method) =>
