@@ -8,8 +8,7 @@ module.exports = ( $errHandler = console.error ) => {
     const
     $pipeline = new Array(),
 
-    createFunc = method => function(...arg) {
-        // adds method and arguments to the pipeline
+    addToPipeline = method => function(...arg) {
         $pipeline.push({ method, arg })
         return this
     },
@@ -30,12 +29,11 @@ module.exports = ( $errHandler = console.error ) => {
         // adds the pipeline's EXECUTE method to the interface
         execute,
         // adds all other METHODS to the interface
-        ...Object.fromEntries( getMethods(createFunc) )
+        ...METHODS.toObject(addToPipeline)
     }
 }
 
 const
-getMethods = func => METHODS.map( method => [ method.name, func.exec(method) ]),
 // this array has two purposes (see exported function)
 //  - the method definition is used to build the pipeline's interface
 //  - the method body is being executed while processing the pipeline
@@ -47,13 +45,13 @@ METHODS = [
     },
     // runs the pipe ignoring the result
     function runShadow(args) {
-        callMethod('run', args)
+        METHODS.exec('run', args)
         return args.res
     },
 
     // stores the result of the function(s) in the state Map
     function store({ arg:funcs, res, input, state }) {
-        funcs.map( pack(state, res, input) )
+        funcs.concurrent(pack, state, res, input)
         return res
     },
     // restores the requested results of the state Map into the pipe
@@ -62,9 +60,9 @@ METHODS = [
     },
 
     // takes the array of a resulting function and executes
-    // the defined pipeline for every item
+    // the defined pipeline for every item concurrently
     function split({ arg:[pipeline], res:[args], state }) {
-        return args.map( execPipeline(pipeline, state) )
+        return args.concurrent(execPipeline, pipeline, state)
     },
 
     // traces the input parameters being consumed by the next method
@@ -73,11 +71,6 @@ METHODS = [
         return res
     }
 ],
-
-// allows a method to be called from within another method
-callMethod = (name, args) =>
-    METHODS.find(method => method.name === name)
-           .exec(args),
 
 // processes the current item of the pipeline
 processItem = ({ method, arg }, input, res, state) =>
@@ -101,6 +94,14 @@ debug = (comment, arg) => console.debug(`${comment}\n`, arg, '\n')
 
 Function.prototype.exec = function(...args) {
     return this.apply(null, args)
+}
+Array.prototype.exec = function(name, args) {
+    this.find(func => func.name === name).exec(args)
+}
+Array.prototype.toObject = function(func) {
+    return Object.fromEntries( this.map( value =>
+        [ value.name, func ? func.exec(value) : value ]
+    ))
 }
 Array.prototype.process = function(reducer, initValue=[]) {
     return this.reduce( reducer, initValue )
