@@ -1,7 +1,7 @@
 "use strict"
 
 /*
-    Usage example: see https://github.com/jcschmidig/mixed-pipeline#readme
+    Usage: see https://github.com/jcschmidig/mixed-pipeline#readme
  */
 
 module.exports = ( $errHandler = console.error ) => {
@@ -29,7 +29,7 @@ module.exports = ( $errHandler = console.error ) => {
         // adds the pipeline's EXECUTE method to the interface
         execute,
         // adds all other METHODS to the interface
-        ...METHODS.toObject(addToPipeline)
+        ...METHODS.toObject( addToPipeline )
     }
 }
 
@@ -74,7 +74,7 @@ METHODS = [
 
 // processes the current item of the pipeline
 processItem = ({ method, arg }, input, res, state) =>
-    // check and execute the method (one of the METHODS below)
+    // check and execute the method (one of the METHODS above)
     pipelineIsOk(res) && method.exec({ arg, res, input, state }),
 //
 pipelineIsOk = res =>
@@ -95,8 +95,8 @@ debug = (comment, arg) => console.debug(`${comment}\n`, arg, '\n')
 Function.prototype.exec = function(...args) {
     return this.apply(null, args)
 }
-Array.prototype.exec = function(name, args) {
-    this.find(func => func.name === name).exec(args)
+Array.prototype.exec = function(name, ...args) {
+    this.find(func => func.name === name).exec(...args)
 }
 Array.prototype.toObject = function(func) {
     return Object.fromEntries( this.map( value =>
