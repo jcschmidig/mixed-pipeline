@@ -7,7 +7,7 @@ module.exports = ( $errHandler = console.error ) => {
     const
     $pipeline = new Array(),
 
-    addToPipeline = method => function(...arg) {
+    addToPipeline = method => function(...arg)
         { return $pipeline.push({ method, arg }) && this },
 
     execute = (input, state=new Map()) => void $pipeline.process(
