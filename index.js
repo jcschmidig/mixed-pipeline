@@ -8,18 +8,14 @@ module.exports = ( $errHandler = console.error ) => {
     $pipeline = new Array(),
 
     addToPipeline = method => function(...arg) {
-        $pipeline.push({ method, arg })
-        return this
-    },
+        { return $pipeline.push({ method, arg }) && this },
 
     execute = (input, state=new Map()) => void $pipeline.process(
         async (pipe, item) => {
-            try {
-                // every item propagates the resulting pipe to the next item
-                pipe = processItem(item, input, await pipe, state)
-            } catch(err) {
-                pipe = void $errHandler.exec({ ...item, input, err })
-            }
+            // every item propagates the resulting pipe to the next item
+            try { pipe = processItem(item, input, await pipe, state) }
+            catch(err) { pipe = void $errHandler.exec({ ...item, input, err }) }
+            //
             return pipe
         }
     )
