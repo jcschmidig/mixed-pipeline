@@ -48,9 +48,9 @@ METHODS = [
     async function restore({ arg:funcs, res, state })
         { return [ ...res, ...(await funcs.concurrent( fRestore(state) )) ] },
 
-    // takes an array and executes the new pipeline for every item concurrently
-    function split({ arg:[pipeline], res:[args], state })
-        { return args.concurrent( pExecute(pipeline, state) ) },
+    // takes an array and executes the new pipelines for every item concurrently
+    function split({ arg:pipelines, res:[args], state })
+        { return pipelines.concurrent( pExecute(args, state) ) },
 
     // traces the input parameters being consumed by the next method
     function trace({ arg:[comment='>>> trace', output=oDebug], res, input })
@@ -69,13 +69,13 @@ fMerge = (f, res, input) => f.exec(...res, input),
 fRun = (res, input) => f => fMerge(f, res, input),
 fStore = (state, res, input) => f => state.set(f.name, fMerge(f, res, input)),
 fRestore = state => f => state.get(f.name),
-pExecute = (pipeline, state) => input => pipeline.execute(input, state),
+pExecute = (args, state) => p => args.map( input => p.execute(input, state) ),
 oDebug = (comment, arg) => console.debug(`${comment}\n`, arg, '\n')
 
 Function.prototype.exec = function(...args) { return this.apply(null, args) }
 
 Array.prototype.exec = function(name, ...args)
-    { this.find(func => func.name === name).exec(...args) }
+    { return this.find(func => func.name === name).exec(...args) }
 
 Array.prototype.toObject = function(func)
     { return Object.fromEntries( this.map( value =>

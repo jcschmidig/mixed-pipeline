@@ -33,7 +33,7 @@ This package needs node above version 11.12.
 - `runShadow(<function>, ...)`: runs the function(s) without changing the pipeline's input and output.
 - `store(<function>, ...)`: stores the output of the concurrently executed function(s) as an intermediate result without injecting the output to the pipeline.
 - `restore(<function>, ...)`: adds the output of the previously stored function(s) to the pipeline as if it had been produced concurrently with the function(s) before.
-- `split(<pipeline>)`: adds a new pipeline which will be executed for every element of the output array of the previous function.
+- `split(<pipeline>, ...)`: adds new pipelines which will be executed for every element of the output array of the previous function.
 - `trace("<comment>", <output>)`: uses the function `<output>` (default: console.debug) to show the `<comment>` with the input parameters being consumed by the next method.<br>
 `<output>` takes two arguments: `<comment>` and { input } object
 
