@@ -46,7 +46,7 @@ METHODS = [
 
     // restores the requested results of the state Map into the pipe
     async function restore({ arg:funcs, res, state })
-        { return [ ...res, ...(await funcs.concurrent( fRestore(state) )) ] },
+        { return res.concat(await funcs.concurrent( fRestore(state) )) },
 
     // takes an array and executes the new pipelines for every item concurrently
     function split({ arg:pipelines, res:[args], state })
