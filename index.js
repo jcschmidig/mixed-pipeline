@@ -35,14 +35,14 @@ const
 METHODS = [
     // runs all functions in the pipe concurrently
     function run({ arg:funcs, res, input })
-        { return funcs.concurrent( fRun(res, input) ) },
+        { return funcs.concurrent( fRun(res.concat(input)) ) },
 
     // runs the pipe ignoring the result
     function runShadow(args) { return void METHODS.exec('run', args) },
 
     // stores the result of the function(s) in the state Map
     function store({ arg:funcs, res, input, state })
-        { return void funcs.concurrent( fStore(state, res, input) ) },
+        { return void funcs.concurrent( fStore(state, res.concat(input)) ) },
 
     // restores the requested results of the state Map into the pipe
     async function restore({ arg:funcs, res, state })
@@ -54,7 +54,7 @@ METHODS = [
 
     // traces the input parameters being consumed by the next method
     function trace({ arg:[comment='>>> trace', output=oDebug], res, input })
-        { return void output.exec(comment, { input: [ ...res, input ] }) }
+        { return void output.exec(comment, { input: res.concat(input) }) }
 ],
 
 processItem = ({ method, arg }, input, res, state) =>
@@ -65,21 +65,21 @@ processItem = ({ method, arg }, input, res, state) =>
 pipelineIsOk = res => Array.isArray(res) && !res.includes(null),
 
 // helper
-fMerge = (f, res, input) => f.exec(...res, input),
-fRun = (res, input) => f => fMerge(f, res, input),
-fStore = (state, res, input) => f => state.set(f.name, fMerge(f, res, input)),
+fRun = args => f => f.exec(args),
+fStore = (state, args) => f => state.set(f.name, f.exec(args)),
 fRestore = state => f => state.get(f.name),
+fPair = f => value => [ value.name, f ? f.exec(value) : value ],
 pExecute = (args, state) => p => args.map( input => p.execute(input, state) ),
 oDebug = (comment, arg) => console.debug(`${comment}\n`, arg, '\n')
 
-Function.prototype.exec = function(...args) { return this.apply(null, args) }
+Function.prototype.exec = function(...args)
+    { return this.apply(null, Array.isArray(args[0]) ? args[0] : args) }
 
 Array.prototype.exec = function(name, ...args)
-    { return this.find(func => func.name === name).exec(...args) }
+    { return this.find(func => func.name === name).exec(args) }
 
 Array.prototype.toObject = function(func)
-    { return Object.fromEntries( this.map( value =>
-        [ value.name, func ? func.exec(value) : value ] )) }
+    { return Object.fromEntries( this.map( fPair(func) )) }
 
 Array.prototype.process = function(reducer, initValue=[])
     { return this.reduce( reducer, initValue ) }
