@@ -8,7 +8,7 @@ module.exports = ( $errHandler = console.error ) => {
     $pipeline = new Array(),
 
     addToPipeline = method => function(...arg)
-        { return $pipeline.push({ method, arg }) && this },
+        { return ( $pipeline.push({ method, arg }), this ) },
 
     execute = (input, state=new Map()) => void $pipeline.process(
         async (pipe, item) => {
@@ -20,12 +20,9 @@ module.exports = ( $errHandler = console.error ) => {
         }
     )
 
-    return {
-        // adds the pipeline's EXECUTE method to the interface
-        execute,
-        // adds all other METHODS to the interface
-        ...METHODS.toObject( addToPipeline )
-    }
+    // adds all METHODS and the execute function to the interface
+    return METHODS.toObject(addToPipeline)
+                  .addFunction(execute)
 }
 
 const
@@ -86,3 +83,6 @@ Array.prototype.process = function(reducer, initValue=[])
 
 Array.prototype.concurrent = function(action)
     { return Promise.all( this.map( action )) }
+
+Object.prototype.addFunction = function(func)
+    { return ( this[func.name] = func, this ) }
