@@ -21,8 +21,7 @@ module.exports = ( $errHandler = console.error ) => {
     )
 
     // adds all METHODS and the execute function to the interface
-    return METHODS.toObject(addToPipeline)
-                  .addFunction(execute)
+    return Object.freeze( METHODS.toObject(addToPipeline).addFunction(execute) )
 }
 
 const
@@ -31,15 +30,15 @@ const
 //  - the method body is being executed while processing the pipeline
 METHODS = [
     // runs all functions in the pipe concurrently
-    function run({ arg:funcs, res, input })
-        { return funcs.concurrent( fRun(res.concat(input)) ) },
+    function run({ arg:funcs, input })
+        { return funcs.concurrent( fRun(input) ) },
 
     // runs the pipe ignoring the result
     function runShadow(args) { return void METHODS.exec('run', args) },
 
     // stores the result of the function(s) in the state Map
-    function store({ arg:funcs, res, input, state })
-        { return void funcs.concurrent( fStore(state, res.concat(input)) ) },
+    function store({ arg:funcs, input, state })
+        { return void funcs.concurrent( fStore(state, input) ) },
 
     // restores the requested results of the state Map into the pipe
     async function restore({ arg:funcs, res, state })
@@ -50,13 +49,14 @@ METHODS = [
         { return pipelines.concurrent( pExecute(args, state) ) },
 
     // traces the input parameters being consumed by the next method
-    function trace({ arg:[comment='>>> trace', output=oDebug], res, input })
-        { return void output.exec(comment, { input: res.concat(input) }) }
+    function trace({ arg:[comment='>>> trace', output=oDebug], input })
+        { return void output.exec(comment, { input }) }
 ],
 
 processItem = ({ method, arg }, input, res, state) =>
     // check and execute the method (one of the METHODS above)
-    pipelineIsOk(res) && (method.exec({ arg, res, input, state }) || res),
+    pipelineIsOk(res) &&
+    ( method.exec({ arg, res, input: res.concat(input), state }) || res ),
 
 // checking result:   no error catched  and not stopped by consumer
 pipelineIsOk = res => Array.isArray(res) && !res.includes(null),
@@ -65,7 +65,7 @@ pipelineIsOk = res => Array.isArray(res) && !res.includes(null),
 fRun = args => f => f.exec(args),
 fStore = (state, args) => f => state.set(f.name, f.exec(args)),
 fRestore = state => f => state.get(f.name),
-fPair = f => value => [ value.name, f ? f.exec(value) : value ],
+fAdd = f => (obj, val) => obj.addFunction(f ? f.exec(val) : val, val.name),
 pExecute = (args, state) => p => args.map( input => p.execute(input, state) ),
 oDebug = (comment, arg) => console.debug(`${comment}\n`, arg, '\n')
 
@@ -75,14 +75,14 @@ Function.prototype.exec = function(...args)
 Array.prototype.exec = function(name, ...args)
     { return this.find(func => func.name === name).exec(args) }
 
-Array.prototype.toObject = function(func)
-    { return Object.fromEntries( this.map( fPair(func) )) }
-
 Array.prototype.process = function(reducer, initValue=[])
     { return this.reduce( reducer, initValue ) }
 
 Array.prototype.concurrent = function(action)
     { return Promise.all( this.map( action )) }
 
-Object.prototype.addFunction = function(func)
-    { return ( this[func.name] = func, this ) }
+Array.prototype.toObject = function(func)
+    { return this.process( fAdd(func), {} ) }
+
+Object.prototype.addFunction = function(value, name=value.name, enumerable=true)
+    { return Object.defineProperty( this, name, { value, enumerable } ) }
