@@ -21,7 +21,7 @@ module.exports = ( $errHandler = console.error ) => {
     )
 
     // adds all METHODS and the execute function to the interface
-    return Object.freeze( METHODS.toObject(addToPipeline).addFunction(execute) )
+    return Object.freeze( METHODS.toList(addToPipeline).addFunction(execute) )
 }
 
 const
@@ -65,7 +65,7 @@ pipelineIsOk = res => Array.isArray(res) && !res.includes(null),
 fRun = args => f => f.exec(args),
 fStore = (state, args) => f => state.set(f.name, f.exec(args)),
 fRestore = state => f => state.get(f.name),
-fAdd = f => (obj, val) => obj.addFunction(f ? f.exec(val) : val, val.name),
+fAdd = f => (list, val) => list.addFunction(f ? f.exec(val) : val, val.name),
 pExecute = (args, state) => p => args.map( input => p.execute(input, state) ),
 oDebug = (comment, arg) => console.debug(`${comment}\n`, arg, '\n')
 
@@ -75,14 +75,14 @@ Function.prototype.exec = function(...args)
 Array.prototype.exec = function(name, ...args)
     { return this.find(func => func.name === name).exec(args) }
 
-Array.prototype.process = function(reducer, initValue=[])
-    { return this.reduce( reducer, initValue ) }
+Array.prototype.process = function(reducer)
+    { return this.reduce( reducer, [] ) }
 
 Array.prototype.concurrent = function(action)
     { return Promise.all( this.map( action )) }
 
-Array.prototype.toObject = function(func)
-    { return this.process( fAdd(func), {} ) }
+Array.prototype.toList = function(func)
+    { return this.process( fAdd(func) ) }
 
-Object.prototype.addFunction = function(value, name=value.name, enumerable=true)
+Array.prototype.addFunction = function(value, name=value.name, enumerable=true)
     { return Object.defineProperty( this, name, { value, enumerable } ) }
