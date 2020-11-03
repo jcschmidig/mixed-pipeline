@@ -2,9 +2,9 @@
 
 ![NPM](https://img.shields.io/npm/l/mixed-pipeline)  ![GitHub top language](https://img.shields.io/github/languages/top/jcschmidig/mixed-pipeline) ![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/jcschmidig/mixed-pipeline) ![GitHub package.json version](https://img.shields.io/github/package-json/v/jcschmidig/mixed-pipeline)
 <br>
-![Snyk Vulnerabilities for GitHub Repo](https://img.shields.io/snyk/vulnerabilities/github/jcschmidig/mixed-pipeline) ![GitHub issues](https://img.shields.io/github/issues/jcschmidig/mixed-pipeline) ![GitHub pull requests](https://img.shields.io/github/issues-pr/jcschmidig/mixed-pipeline)
+![Snyk Vulnerabilities for GitHub Repo](https://img.shields.io/snyk/vulnerabilities/github/jcschmidig/mixed-pipeline) ![GitHub issues](https://img.shields.io/github/issues/jcschmidig/mixed-pipeline) ![GitHub pull requests](https://img.shields.io/github/issues-pr/jcschmidig/mixed-pipeline) ![Libraries.io dependency status for GitHub repo](https://img.shields.io/librariesio/github/jcschmidig/mixed-pipeline)
 <br>
-![node-current](https://img.shields.io/node/v/mixed-pipeline) ![GitHub last commit](https://img.shields.io/github/last-commit/jcschmidig/mixed-pipeline) ![Libraries.io dependency status for GitHub repo](https://img.shields.io/librariesio/github/jcschmidig/mixed-pipeline) ![npm](https://img.shields.io/npm/dm/mixed-pipeline)
+![node-current](https://img.shields.io/node/v/mixed-pipeline) ![GitHub last commit](https://img.shields.io/github/last-commit/jcschmidig/mixed-pipeline) ![npm](https://img.shields.io/npm/dm/mixed-pipeline)
 
 ### 1. Overview
 
