@@ -1,6 +1,6 @@
 {
   "name": "mixed-pipeline",
-  "version": "2.3.6",
+  "version": "3.0.0",
   "description": "Pipeline to process synchronous and asynchronous functions",
   "engines": {
     "node": ">=11.13.0"
@@ -8,6 +8,7 @@
   "main": "index.js",
   "files": [
     "index.js",
+    "extArray.js",
     "readme.md"
   ],
   "scripts": {
