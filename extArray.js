@@ -1,16 +1,13 @@
 class extArray extends Array {
-    constructor(...arg) {
-        super(...arg)
-    }
     //
     exec(name, ...args) {
-        return this.find(item => item.name === name).apply(null, args)
+        return this.find(item => item.name === name).apply(this, args)
     }
 
     toList(converter) {
         return this.process(
             (list, item) =>
-                list.addFunction(converter.call(null, item), item.name)
+                list.addFunction(converter.call(this, item), item.name)
         )
     }
 
@@ -29,4 +26,4 @@ class extArray extends Array {
     static get [Symbol.species]() { return Array }
 }
 
-module.exports = function(...args) { return new extArray(...args) }
+module.exports = function(arr=[]) { return extArray.from(arr) }

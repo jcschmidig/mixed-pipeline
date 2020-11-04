@@ -11,7 +11,7 @@ module.exports = ( $errHandler = console.error ) => {
 
     addToPipeline = method =>
         function(...arg) {
-            $pipeline.push({ method, arg:extArray(...arg) })
+            $pipeline.push({ method, arg: extArray(arg) })
             return this
         },
 
@@ -21,7 +21,7 @@ module.exports = ( $errHandler = console.error ) => {
             try {
                 pipe = processItem(item, input, await pipe, state)
             } catch(err) {
-                pipe = void $errHandler.apply(null, { ...item, input, err })
+                pipe = void $errHandler.call(this, { ...item, input, err })
             }
             //
             return pipe
@@ -39,11 +39,11 @@ const
 // this array has two purposes (see exported function)
 //  - the method definition is used to build the pipeline's interface
 //  - the method body is being executed while processing the pipeline
-METHODS = new extArray(
+METHODS = extArray([
     // runs all functions in the pipe concurrently
     function run({ arg:funcs, input }) {
         return funcs.concurrent(
-            func => func.apply(null, input)
+            func => func.apply(this, input)
         )
     },
 
@@ -55,7 +55,7 @@ METHODS = new extArray(
     // stores the result of the function(s) in the state Map
     function store({ arg:funcs, input, state }) {
         return void funcs.concurrent(
-            func => state.set(func.name, func.apply(null, input))
+            func => state.set(func.name, func.apply(this, input))
         )
     },
 
@@ -79,14 +79,14 @@ METHODS = new extArray(
 
     // traces the input parameters being consumed by the next method
     function trace({ arg:[comment='>>> trace', output=oDebug], input }) {
-        return void output.call(null, comment, { input })
+        return void output.call(this, comment, { input })
     }
-),
+]),
 
 processItem = ({ method, arg }, input, res, state) =>
     // check and execute the method (one of the METHODS above)
     pipelineIsOk(res) &&
-    ( method.call(null, { arg, res, input: res.concat(input), state }) || res ),
+    ( method.call(this, { arg, res, input: res.concat(input), state }) || res ),
 
 // checking result:   no error catched  and not stopped by consumer
 pipelineIsOk = res => Array.isArray(res) && !res.includes(null),
