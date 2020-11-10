@@ -70,7 +70,7 @@ METHODS = [
 
     // takes an array and executes the new pipelines for every item concurrently
     function split({ arg:pipelines, res:[args], state }) {
-        return concurrent(
+        return void concurrent(
             pipelines,
             pipeline => args.map(
                 input => pipeline.execute(input, state)
@@ -79,7 +79,7 @@ METHODS = [
     },
 
     // traces the input parameters being consumed by the next method
-    function trace({ arg:[comment='>>> trace', output=oDebug], input }) {
+    function trace({ arg:[comment='>>> trace', output=debug], input }) {
         return void output.call(this, comment, { input })
     }
 ],
@@ -87,7 +87,13 @@ METHODS = [
 processItem = ({ method, arg }, input, res, state) =>
     // check and execute the method (one of the METHODS above)
     pipelineIsOk(res) &&
-    ( method.call(this, { arg, res, input: res.concat(input), state }) || res ),
+    (
+        method.call(
+            this,
+            { arg, res, input: res.concat(input), state }
+        )
+        || res
+    ),
 
 // checking result:   no error catched  and not stopped by consumer
 pipelineIsOk = res => Array.isArray(res) && !res.includes(null),
@@ -96,19 +102,23 @@ pipelineIsOk = res => Array.isArray(res) && !res.includes(null),
 process = (obj, processor) =>
     void obj.reduce( processor, new Array() ),
 
-addMethods = (converter=id, init=noop) =>
+id = arg => arg,
+addMethods = (converter=id, init) =>
     METHODS.reduce(
         (list, item) =>
             addFunction(converter.call(this, item), item.name, list),
-        addFunction(init)
+        init ? addFunction(init) : new Array()
     ),
 addFunction = (value, name=value.name, list=[], enumerable=true) =>
-    Object.defineProperty(list, name, { value, enumerable }),
-id = arg => arg,
-noop = () => {},
+    Object.defineProperty(
+        list,
+        name,
+        { value, enumerable }
+    ),
 
 concurrent = (obj, action) => Promise.all( obj.map( action )),
-runMethod = (name, ...args) =>
-    METHODS.find(item => item.name === name).apply(this, args),
+runMethod = (name, arg) =>
+    METHODS.find(item => item.name === name)
+           .call(this, arg),
 
-oDebug = (comment, arg) => console.debug(`${comment}\n`, arg, '\n')
+debug = (comment, arg) => console.debug(`${comment}\n`, arg, '\n')

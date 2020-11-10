@@ -4,7 +4,7 @@
 <br>
 ![Snyk Vulnerabilities for GitHub Repo](https://img.shields.io/snyk/vulnerabilities/github/jcschmidig/mixed-pipeline) ![GitHub issues](https://img.shields.io/github/issues/jcschmidig/mixed-pipeline) ![GitHub pull requests](https://img.shields.io/github/issues-pr/jcschmidig/mixed-pipeline) ![Libraries.io dependency status for GitHub repo](https://img.shields.io/librariesio/github/jcschmidig/mixed-pipeline)
 <br>
-![node-current](https://img.shields.io/node/v/mixed-pipeline) ![GitHub last commit](https://img.shields.io/github/last-commit/jcschmidig/mixed-pipeline) ![npm](https://img.shields.io/npm/dm/mixed-pipeline)
+![node-current](https://img.shields.io/node/v/mixed-pipeline) ![GitHub last commit](https://img.shields.io/github/last-commit/jcschmidig/mixed-pipeline) ![npm](https://img.shields.io/npm/dm/mixed-pipeline) ![npm](https://img.shields.io/npm/dt/mixed-pipeline?label=total&style=flat-square)
 
 ### 1. Overview
 
