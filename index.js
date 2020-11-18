@@ -14,7 +14,7 @@ module.exports = function( $errHandler = console.error ) {
         },
 
     execute = (input, state=new Map()) =>
-        process(
+        void process(
             $pipeline,
             async (pipe, item) => {
                 // every item propagates the resulting pipe to the next item
@@ -29,7 +29,12 @@ module.exports = function( $errHandler = console.error ) {
         )
 
     // adds all METHODS and the execute function to the interface
-    return Object.freeze( addMethods(addToPipeline, execute) )
+    return Object.freeze(
+        addMethods(
+            addToPipeline,
+            addFunction( execute )
+        )
+    )
 }
 
 const
@@ -72,7 +77,8 @@ METHODS = [
     function split({ arg:pipelines, res:[args], state }) {
         return void concurrent(
             pipelines,
-            pipeline => args.map(
+            pipeline => concurrent(
+                args,
                 input => pipeline.execute(input, state)
             )
         )
@@ -99,17 +105,18 @@ processItem = ({ method, arg }, input, res, state) =>
 pipelineIsOk = res => Array.isArray(res) && !res.includes(null),
 
 // helper
-process = (obj, processor) =>
-    void obj.reduce( processor, new Array() ),
+process = (obj, processor, initValue=new Array()) =>
+    obj.reduce( processor, initValue ),
 
 id = arg => arg,
-addMethods = (converter=id, init) =>
-    METHODS.reduce(
+addMethods = (converter=id, init=new Array()) =>
+    process(
+        METHODS,
         (list, item) =>
             addFunction(converter.call(this, item), item.name, list),
-        init ? addFunction(init) : new Array()
+        init
     ),
-addFunction = (value, name=value.name, list=[], enumerable=true) =>
+addFunction = (value, name=value.name, list=new Array(), enumerable=true) =>
     Object.defineProperty(
         list,
         name,
@@ -117,8 +124,10 @@ addFunction = (value, name=value.name, list=[], enumerable=true) =>
     ),
 
 concurrent = (obj, action) => Promise.all( obj.map( action )),
-runMethod = (name, arg) =>
-    METHODS.find(item => item.name === name)
+
+filterByName = name => obj => obj.name === name,
+runMethod = (method, arg) =>
+    METHODS.find( filterByName(method) )
            .call(this, arg),
 
 debug = (comment, arg) => console.debug(`${comment}\n`, arg, '\n')
