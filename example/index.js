@@ -5,7 +5,7 @@ const { join } = require('path')
 const { readdir:readDirectory,
 		readFile,
 		writeFile,
-		unlink:deleteFile } = require('fs/promises')
+		unlink:deleteFile } = require('fs').promises
 
 if (!String.prototype.replaceAll) {
 	String.prototype.replaceAll = function(search, replace) {

@@ -22,7 +22,7 @@ Just write pure functions and let the pipeline handle the rest.
 
 ### 2. Prerequisites
 
-This package needs node above version 11.12.
+This package needs node above version 10.23.
 
 ### 3. Installation
 
