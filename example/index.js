@@ -43,11 +43,11 @@ const getPaths = (entries, dir) =>
 		.map(entry => join(dir, entry.name))
 
 // deletes already stored package files, ignoring any errors
-const deleteOldConfigFile = (packagePath) =>
+const deleteOldConfigFile = packagePath =>
     void deleteFile(join(packagePath, PACKAGE_NAME)).catch( noop )
 
 // reads the config file of the package => example/<package>/config.js
-const getNewConfig = (packagePath) =>
+const getNewConfig = packagePath =>
     require(join(packagePath, CONFIG_NAME))
 
 // Gets the input from getConfig and getTemplate (added via restore)

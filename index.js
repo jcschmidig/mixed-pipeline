@@ -8,8 +8,8 @@ module.exports = function( $errHandler = console.error ) {
     $pipeline = new Array(),
 
     addToPipeline = method =>
-        function(...arg) {
-            $pipeline.push({ method, arg })
+        function(...funcs) {
+            $pipeline.push({ method, funcs })
             return this
         },
 
@@ -20,7 +20,8 @@ module.exports = function( $errHandler = console.error ) {
                 // every item propagates the resulting pipe to the next item
                 try {
                     pipe = processItem(item, input, await pipe, state)
-                } catch(err) {
+                }
+                catch(err) {
                     pipe = void $errHandler.call(this, { ...item, input, err })
                 }
                 //
@@ -43,29 +44,29 @@ const
 //  - the method body is being executed while processing the pipeline
 METHODS = [
     // runs all functions in the pipe concurrently
-    function run({ arg:funcs, input }) {
+    function run({ funcs, args }) {
         return concurrent(
             funcs,
-            func => func.apply(this, input)
+            func => func.apply(this, args)
         )
     },
 
     // runs the pipe ignoring the result
-    function runShadow(args) {
-        return void runMethod('run', args)
+    function runShadow(methodArgs) {
+        return void runMethod('run', methodArgs)
     },
 
     // stores the result of the function(s) in the state Map
-    function store({ arg:funcs, input, state }) {
+    function store({ funcs, args, state }) {
         return void concurrent(
             funcs,
-            func => state.set(func.name, func.apply(this, input))
+            func => state.set(func.name, func.apply(this, args))
         )
     },
 
     // restores the requested results of the state Map into the pipe
-    async function restore({ arg:funcs, res, state }) {
-        return res.concat(
+    async function restore({ funcs, pipe, state }) {
+        return pipe.concat(
             await concurrent(
                 funcs,
                 func => state.get(func.name)
@@ -74,42 +75,44 @@ METHODS = [
     },
 
     // takes an array and executes the new pipelines for every item concurrently
-    function split({ arg:pipelines, res:[args], state }) {
+    function split({ funcs:pipelines, pipe:[inputs], state }) {
         return void concurrent(
             pipelines,
             pipeline => concurrent(
-                args,
+                inputs,
                 input => pipeline.execute(input, state)
             )
         )
     },
 
     // traces the input parameters being consumed by the next method
-    function trace({ arg:[comment='>>> trace', output=debug], input }) {
-        return void output.call(this, comment, { input })
+    function trace({ funcs:[comment='>>> trace', output=debug], args }) {
+        return void output.call(this, comment, { args })
     }
 ],
 
-processItem = ({ method, arg }, input, res, state) =>
+processItem = ({ method, funcs }, input, pipe, state) =>
     // check and execute the method (one of the METHODS above)
-    pipelineIsOk(res) &&
-    (
+    pipeIsOk(pipe) && (
         method.call(
             this,
-            { arg, res, input: res.concat(input), state }
+            { funcs, pipe, args: pipe.concat(input), state }
         )
-        || res
+        || pipe
     ),
 
 // checking result:   no error catched  and not stopped by consumer
-pipelineIsOk = res => Array.isArray(res) && !res.includes(null),
+pipeIsOk = pipe => Array.isArray(pipe) && !pipe.includes(null),
 
 // helper
-process = (obj, processor, initValue=new Array()) =>
-    obj.reduce( processor, initValue ),
+process = (obj, processor, initValue) =>
+    obj.reduce(
+        processor,
+        Array.isArray(initValue) ? initValue : new Array()
+    ),
 
 id = arg => arg,
-addMethods = (converter=id, init=new Array()) =>
+addMethods = (converter=id, init) =>
     process(
         METHODS,
         (list, item) =>
@@ -125,7 +128,7 @@ addFunction = (value, name=value.name, list=new Array(), enumerable=true) =>
 
 concurrent = (obj, action) => Promise.all( obj.map( action )),
 
-filterByName = name => obj => obj.name === name,
+filterByName = value => ({ name }) => name === value,
 runMethod = (method, arg) =>
     METHODS.find( filterByName(method) )
            .call(this, arg),
