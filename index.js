@@ -14,28 +14,24 @@ module.exports = function( $errHandler = console.error ) {
         },
 
     execute = (input, state=new Map()) =>
-        void process(
+        process(
             $pipeline,
             async (pipe, item) => {
+                let  nextPipe
                 // every item propagates the resulting pipe to the next item
                 try {
-                    pipe = processItem(item, input, await pipe, state)
+                    nextPipe = processItem(item, input, await pipe, state)
                 }
                 catch(err) {
-                    pipe = void $errHandler.call(this, { ...item, input, err })
+                    $errHandler.call(this, { ...item, input, err })
                 }
                 //
-                return pipe
+                return nextPipe
             }
         )
 
     // adds all METHODS and the execute function to the interface
-    return Object.freeze(
-        addMethods(
-            addToPipeline,
-            addFunction( execute )
-        )
-    )
+    return setMethods(addToPipeline, execute)
 }
 
 const
@@ -105,28 +101,16 @@ processItem = ({ method, funcs }, input, pipe, state) =>
 pipeIsOk = pipe => Array.isArray(pipe) && !pipe.includes(null),
 
 // helper
-process = (obj, processor, initValue) =>
-    obj.reduce(
-        processor,
-        Array.isArray(initValue) ? initValue : new Array()
+process = (list, processor) => void list.reduce(processor, new Array()),
+
+setMethods = (converter, func) =>
+    METHODS.reduce(
+        (props, item) =>
+            Object.assign(props, { [item.name]: converter.call(this, item) }),
+        { [func.name]: func }
     ),
 
-id = arg => arg,
-addMethods = (converter=id, init) =>
-    process(
-        METHODS,
-        (list, item) =>
-            addFunction(converter.call(this, item), item.name, list),
-        init
-    ),
-addFunction = (value, name=value.name, list=new Array(), enumerable=true) =>
-    Object.defineProperty(
-        list,
-        name,
-        { value, enumerable }
-    ),
-
-concurrent = (obj, action) => Promise.all( obj.map( action )),
+concurrent = (list, processor) => Promise.all( list.map( processor )),
 
 filterByName = value => ({ name }) => name === value,
 runMethod = (method, arg) =>
