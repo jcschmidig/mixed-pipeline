@@ -31,10 +31,12 @@ const noop = () => {}
 
 // Will be stored in the main pipeline to be restored in the process pipeline,
 // so it's only read once in the whole process
-const getTemplate = () => readFile(TEMPLATE_FILENAME, UTF)
+const getTemplate = () =>
+	readFile(TEMPLATE_FILENAME, UTF)
 
 // The starting point, uses the pipeline input to find the subdirs
-const findPackages = dir => readDirectory(dir, { withFileTypes: true })
+const findPackages = dir =>
+	readDirectory(dir, { withFileTypes: true })
 
 // Filters the directories and extracts the path names
 const getPaths = (entries, dir) =>
@@ -53,16 +55,21 @@ const getNewConfig = packagePath =>
 // Gets the input from getConfig and getTemplate (added via restore)
 // and merges the config content
 const convertConfig = (config, template) =>
-	Object.entries(config)
-		  .reduce( (output, [key, value]) =>
-			  output.replaceAll(CONF_MARKER + key, value), template )
+	Object
+		.entries(config)
+		.reduce(
+			(output, [key, value]) =>
+				output.replaceAll(CONF_MARKER + key, value),
+			template
+		)
 
 // Writes the config file to disk
 const writeConfig = (configOutput, packagePath) =>
 	writeFile(join(packagePath, PACKAGE_NAME), configOutput, UTF)
 
 // Runs concurrently with writeConfig and therefore gets also the config output
-const displaySuccess = configOutput => display(JSON.parse(configOutput).name)
+const displaySuccess = configOutput =>
+	display(JSON.parse(configOutput).name)
 
 /*
     Pipe definitions

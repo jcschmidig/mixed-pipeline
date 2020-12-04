@@ -17,16 +17,12 @@ module.exports = function( $errHandler = console.error ) {
         process(
             $pipeline,
             async (pipe, item) => {
-                let  nextPipe
+                let res
                 // every item propagates the resulting pipe to the next item
-                try {
-                    nextPipe = processItem(item, input, await pipe, state)
-                }
-                catch(err) {
-                    $errHandler.call(this, { ...item, input, err })
-                }
+                try { res = processItem(item, input, await pipe, state) }
+                catch(err) { $errHandler({ ...item, input, err }) }
                 //
-                return nextPipe
+                return res
             }
         )
 
@@ -74,26 +70,20 @@ METHODS = [
     function split({ funcs:pipelines, pipe:[inputs], state }) {
         return void concurrent(
             pipelines,
-            pipeline => concurrent(
-                inputs,
-                input => pipeline.execute(input, state)
-            )
+            pipeline => inputs.map( input => pipeline.execute(input, state) )
         )
     },
 
     // traces the input parameters being consumed by the next method
     function trace({ funcs:[comment='>>> trace', output=debug], args }) {
-        return void output.call(this, comment, { args })
+        return void output(comment, { args })
     }
 ],
 
 processItem = ({ method, funcs }, input, pipe, state) =>
     // check and execute the method (one of the METHODS above)
     pipeIsOk(pipe) && (
-        method.call(
-            this,
-            { funcs, pipe, args: pipe.concat(input), state }
-        )
+        method({ funcs, pipe, args: pipe.concat(input), state })
         || pipe
     ),
 
@@ -103,18 +93,20 @@ pipeIsOk = pipe => Array.isArray(pipe) && !pipe.includes(null),
 // helper
 process = (list, processor) => void list.reduce(processor, new Array()),
 
-setMethods = (converter, func) =>
-    METHODS.reduce(
-        (props, item) =>
-            Object.assign(props, { [item.name]: converter.call(this, item) }),
-        { [func.name]: func }
-    ),
-
 concurrent = (list, processor) => Promise.all( list.map( processor )),
 
+setMethods = (converter, ...funcs) =>
+    METHODS.reduce(
+        (obj, method) => addMethod(obj, converter(method), method.name),
+        funcs.reduce( addFunction, new Object() )
+    ),
+addMethod = (obj, value, name, enumerable=true) =>
+    Object.defineProperty(obj, name, { value, enumerable }),
+addFunction = (obj, func) => addMethod(obj, func, func.name),
+
 filterByName = value => ({ name }) => name === value,
-runMethod = (method, arg) =>
-    METHODS.find( filterByName(method) )
-           .call(this, arg),
+runMethod = (method, arg) => METHODS
+    .find( filterByName(method) )
+    .call(this, arg),
 
 debug = (comment, arg) => console.debug(`${comment}\n`, arg, '\n')
