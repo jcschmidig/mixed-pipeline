@@ -1,58 +1,42 @@
 "use strict"
-/*
-    Usage: see https://github.com/jcschmidig/mixed-pipeline#readme
- */
-
+/* Usage: see https://github.com/jcschmidig/mixed-pipeline#readme */
+//
 module.exports = function( $errHandler = console.error ) {
     const $pipeline = new Array(),
-    //
-    addToPipeline = method => function(...funcs) {
-        $pipeline.push({ method, funcs })
-        return this
-    },
+    addToPipeline = method => function(...funcs)
+        { $pipeline.push({ method, funcs }); return this },
     //
     execute = (input, state=new Map()) =>
-        $pipeline.reduce(
-            async (pipe, item) => {
-                let res
-                // every item propagates the resulting pipe to the next item
-                try { res = processItem(item, input, await pipe, state) }
-                catch(err) { $errHandler({ ...item, input, err }) }
-                //
-                return res
-            }, [] )
-
-    // register all METHODS and the execute function to the interface
+        void $pipeline.reduce( async (pipe, item, index) => {
+            try { index = processItem(item, input, await pipe, state) }
+            catch(err) { $errHandler({ ...item, input, err }) }
+            return index
+        }, [] )
+    //
     return { execute, ...register(METHODS, addToPipeline) }
 }
-
+//
 const METHODS = {
+    run ({ funcs, args }) { return concurrent(funcs, fapply(args)) },
+    runShadow (props)     { this.run(props) },
     //
-    run({ funcs, args }) { return concurrent(funcs, fapply(args)) },
-    runShadow(props)     { this.run(props) },
-    //
-    store({ funcs, args, state })
+    store ({ funcs, args, state })
         { concurrent(funcs, fset(state, fapply(args))) },
+    async restore ({ funcs, pipe, state })
+        { return pipe.concat( await concurrent(funcs, fget(state)) ) },
     //
-    async restore({ funcs, pipe, state })
-        { return pipe.concat( await concurrent(funcs, fget(state))) },
-    //
-    split({ funcs:pipelines, pipe:[input], state })
+    split ({ funcs:pipelines, pipe:[input], state })
         { concurrent(pipelines, pexec(input, state)) },
-    //
-    trace({ funcs:[comment='>>> trace', output=debug], args })
+    trace ({ funcs:[comment='>>> trace', output=debug], args })
         { output(comment, { args }) }
 },
-
+//
 processItem = ({ method, funcs }, input, pipe, state) =>
     isBroken(pipe)
         || METHODS[method] ({ funcs, pipe, args:pipe.concat(input), state })
         || pipe,
-
-// checking pipe:         error catched or stopped by consumer
 isBroken = pipe => !Array.isArray(pipe) || pipe.includes(null),
-
-// helper
+//
 register = (obj, gen) => Object.keys(obj).reduce( (o, key) =>
     Object.defineProperty(o, key, { value: gen(key), enumerable: true }), {} ),
 concurrent = (obj, processor) => Promise.all( obj.map( processor )),
