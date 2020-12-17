@@ -8,8 +8,8 @@ module.exports = function( $errHandler = console.error ) {
     //
     execute = (input, state=new Map()) =>
         void $pipeline.reduce( async (pipe, item, index) => {
-            try { index = processItem(item, input, await pipe, state) }
-            catch(err) { $errHandler({ ...item, input, err }) }
+            try       { index = processItem(item, input, await pipe, state) }
+            catch(e)  { $errHandler({ ...item, input, error:e }) }
             return index
         }, [] )
     //
@@ -21,12 +21,12 @@ const METHODS = {
     runShadow (props)     { this.run(props) },
     //
     store ({ funcs, args, state })
-        { concurrent(funcs, fset(state, fapply(args))) },
+        { funcs.map( fset(state, fapply(args)) ) },
     async restore ({ funcs, pipe, state })
         { return pipe.concat( await concurrent(funcs, fget(state)) ) },
     //
     split ({ funcs:pipelines, pipe:[input], state })
-        { concurrent(pipelines, pexec(input, state)) },
+        { pipelines.map( pexec(input, state) ) },
     trace ({ funcs:[comment='>>> trace', output=debug], args })
         { output(comment, { args }) }
 },
