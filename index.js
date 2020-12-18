@@ -6,10 +6,10 @@ module.exports = function( $errHandler = console.error ) {
     addToPipeline = method => function(...funcs)
         { $pipeline.push({ method, funcs }); return this },
     //
-    execute = (input, state=new Map()) =>
+    execute = ($input, $state=new Map()) =>
         void $pipeline.reduce( async (pipe, item, index) => {
-            try      { index = processItem(item, input, await pipe, state) }
-            catch(e) { $errHandler({ ...item, input, error:e }) }
+            try      { index = process(item, $input, await pipe, $state) }
+            catch(e) { $errHandler({ ...item, input:$input, error:e }) }
             return index
         }, [] )
     //
@@ -22,7 +22,7 @@ const METHODS = {
     //
     store ({ funcs, args, state }) { funcs.map( fset(state, fapply(args)) ) },
     async restore ({ funcs, pipe, state })
-        { return pipe.concat( await concurrent(funcs, fget(state)) ) },
+        { return pipe.concat(await concurrent(funcs, fget(state))) },
     //
     split ({ funcs:pipelines, pipe:[input], state })
         { pipelines.map( pexec(input, state) ) },
@@ -31,12 +31,12 @@ const METHODS = {
 },
 //
 isBroken = pipe => !Array.isArray(pipe) || pipe.includes(null),
-processItem = ({ method, funcs }, input, pipe, state) => isBroken(pipe) ||
+process = ({ method, funcs }, input, pipe, state) => isBroken(pipe) ||
     METHODS[method] ({ funcs, pipe, args:pipe.concat(input), state }) || pipe,
 //
 register = (obj, gen) => Object.keys(obj).reduce( (o, key) =>
     Object.defineProperty(o, key, { value: gen(key), enumerable: true }), {} ),
-concurrent = (obj, processor) => Promise.all( obj.map( processor )),
+concurrent = (obj, processor) => Promise.all(obj.map( processor )),
 fapply =       args  => func => func.apply(this, args),
 fset = (state, farg) => func => state.set(func.name, farg(func)),
 fget =  state        => func => state.get(func.name),

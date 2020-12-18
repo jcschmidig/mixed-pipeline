@@ -55,13 +55,10 @@ const getNewConfig = packagePath =>
 // Gets the input from getConfig and getTemplate (added via restore)
 // and merges the config content
 const convertConfig = (config, template) =>
-	Object
-		.entries(config)
-		.reduce(
-			(output, [key, value]) =>
-				output.replaceAll(CONF_MARKER + key, value),
-			template
-		)
+	Object.entries(config).reduce(
+		(out, [key, value]) => out.replaceAll(CONF_MARKER + key, value),
+		template
+	)
 
 // Writes the config file to disk
 const writeConfig = (configOutput, packagePath) =>
