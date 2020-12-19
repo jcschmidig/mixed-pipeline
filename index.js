@@ -24,21 +24,18 @@ const METHODS = {
     async restore ({ funcs, pipe, state })
         { return pipe.concat(await concurrent(funcs, fget(state))) },
     //
-    split ({ funcs:pipelines, pipe:[input], state })
-        { pipelines.map( pexec(input, state) ) },
-    trace ({ funcs:[comment='>>> trace', output=debug], args })
-        { output(comment, { args }) }
+    split ({ funcs:ppl, pipe:[args], state }) { ppl.map( pexec(state, args) ) },
+    trace ({ funcs:[cmt='>>> trace', out=debug], args }) { out(cmt, { args }) }
 },
 //
 isBroken = pipe => !Array.isArray(pipe) || pipe.includes(null),
 process = ({ method, funcs }, input, pipe, state) => isBroken(pipe) ||
     METHODS[method] ({ funcs, pipe, args:pipe.concat(input), state }) || pipe,
 //
-register = (obj, gen) => Object.keys(obj).reduce( (o, key) =>
-    Object.defineProperty(o, key, { value: gen(key), enumerable: true }), {} ),
+register = (obj, gen, k, o={}) => { for (k in obj) o[k] = gen(k); return o },
 concurrent = (obj, processor) => Promise.all(obj.map( processor )),
 fapply =       args  => func => func.apply(this, args),
 fset = (state, farg) => func => state.set(func.name, farg(func)),
 fget =  state        => func => state.get(func.name),
-pexec = (args, state) => ppl => args.map( input => ppl.execute(input, state) ),
+pexec = (state, args) => ppl => args.map( input => ppl.execute(input, state) ),
 debug = (comment, arg) => console.debug(`${comment}\n`, arg, '\n')
