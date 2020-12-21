@@ -6,12 +6,11 @@ module.exports = function( $errHandler = console.error ) {
     addToPipeline = method => function(...funcs)
         { $pipeline.push({ method, funcs }); return this },
     //
-    execute = ($input, $state=new Map()) =>
-        void $pipeline.reduce( async (pipe, item, index) => {
+    execute = ($input, $state=new Map()) => void $pipeline.reduce(
+        async (pipe, item, index) => {
             try      { index = process(item, $input, await pipe, $state) }
             catch(e) { $errHandler({ ...item, input:$input, error:e }) }
-            return index
-        }, [] )
+            return index }, [])
     //
     return { execute, ...register(METHODS, addToPipeline) }
 }
@@ -29,10 +28,10 @@ const METHODS = {
 },
 //
 isBroken = pipe => !Array.isArray(pipe) || pipe.includes(null),
-process = ({ method, funcs }, input, pipe, state) => isBroken(pipe) ||
+process = ({ method, funcs }, input, pipe, state) =>   isBroken(pipe) ||
     METHODS[method] ({ funcs, pipe, args:pipe.concat(input), state }) || pipe,
 //
-register = (obj, gen, k, o={}) => { for (k in obj) o[k] = gen(k); return o },
+register = (obj, gen, r={}) => (Object.keys(obj).map( k => r[k] = gen(k) ), r),
 concurrent = (obj, processor) => Promise.all(obj.map( processor )),
 fapply =       args  => func => func.apply(this, args),
 fset = (state, farg) => func => state.set(func.name, farg(func)),
