@@ -81,7 +81,7 @@ function findPaths(path) {
     return fs.readdir(path)
 }
 
-function writeConfig(template, subPath) {
+function writeConfig(subPath, template) {
     void fs.writeFile(subPath+'/config.json', template)
 }
 ```
