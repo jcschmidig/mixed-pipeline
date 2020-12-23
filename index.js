@@ -15,13 +15,12 @@ module.exports = function($errHandler=console.error, $pipeline=[]) {
 }
 //
 const METHODS = {
-    run ({ funcs, args }) { return pack(funcs, fapply(args)) },
-    runShadow (props)     { this.run(props) },
+    run ({ funcs, args })            { return pack(funcs, apply(args)) },
+    runShadow (props)                { this.run(props) },
+    store ({ funcs, args, state })   { funcs.map( map(state, apply(args)) ) },
+    restore ({ funcs, pipe, state }) { return pack(funcs, map(state), pipe) },
     //
-    store ({ funcs, args, state })   { funcs.map( fmap(state, fapply(args)) ) },
-    restore ({ funcs, pipe, state }) { return pack(funcs, fmap(state), pipe) },
-    //
-    split ({ funcs:ppl, pipe:[args], state }) { ppl.map( pexec(state, args) ) },
+    split ({ funcs:ppl, pipe:[args], state }) { ppl.map( exec(state, args) ) },
     trace ({ funcs:[cmt='>>> trace', out=debug], args }) { out(cmt, { args }) }
 },
 //
@@ -31,7 +30,7 @@ process = ({ method, funcs }, input, pipe, state) =>   isBroken(pipe) ||
 //
 register = (obj, gen, r={}) => (Object.keys(obj).map( k => r[k] = gen(k) ), r),
 pack = (obj, proc, coll=[]) => Promise.all(coll.concat(obj.map( proc ))),
-fapply = args       => func => func.apply(this, args),
-fmap = (state, arg) => func => state[arg?'set':'get'](func.name, arg&&arg(func)),
-pexec = (state, args) => ppl => args.map( input => ppl.execute(input, state) ),
-debug = (comment, arg) => console.debug(`${comment}\n`, arg, '\n')
+apply = args        => func => func.apply(this, args),
+map = (state, arg)  => func => state[arg?'set':'get'](func.name, arg&&arg(func)),
+exec = (state, args) => ppl => args.map( input => ppl.execute(input, state) ),
+debug = (comment, arg)      => console.debug(`${comment}\n`, arg, '\n')
