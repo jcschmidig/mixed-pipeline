@@ -39,14 +39,13 @@ const findPackages = dir =>
 	readDirectory(dir, { withFileTypes: true })
 
 // Filters the directories and extracts the path names
-const getPaths = (entries, dir) =>
-	entries
-		.filter(entry => entry.isDirectory())
-		.map(entry => join(dir, entry.name))
+const getPaths = (entries, dir) => entries
+	.filter(entry => entry.isDirectory())
+	.map(entry => join(dir, entry.name))
 
 // deletes already stored package files, ignoring any errors
 const deleteOldConfigFile = packagePath =>
-    void deleteFile(join(packagePath, PACKAGE_NAME)).catch( noop )
+    deleteFile(join(packagePath, PACKAGE_NAME)).catch( noop )
 
 // reads the config file of the package => example/<package>/config.js
 const getNewConfig = packagePath =>
