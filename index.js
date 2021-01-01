@@ -27,9 +27,9 @@ isBroken = pipe => !Array.isArray(pipe) || pipe.includes(null),
 process = ({ method, funcs }, input, pipe, state) =>   isBroken(pipe) ||
     METHODS[method] ({ funcs, pipe, args:pipe.concat(input), state }) || pipe,
 //
-transform = (obj, proc)     => Object.fromEntries(Object.keys(obj).map(proc)),
-pack = (obj, proc, coll=[]) => Promise.all(coll.concat(obj.map( proc ))),
-apply = args        => func => func.apply(this, args),
-map = (state, arg)  => func => state[arg?'set':'get'](func.name, arg&&arg(func)),
-exec = (state, args) => ppl => args.map( input => ppl.execute(input, state) ),
+transform = (obj, proc)     => Object.fromEntries(Object.keys(obj).map( proc )),
+pack = (lst, proc, coll=[]) => Promise.all(coll.concat(lst.map( proc ))),
+apply = arg          => fnc => fnc.apply(this, arg),
+map   = (m, arg)     => fnc => arg ? m.set(fnc.name, arg(fnc)) : m.get(fnc.name),
+exec  = (state, arg) => ppl => arg.map( input => ppl.execute(input, state) ),
 debug = (comment, arg)      => console.debug(`${comment}\n`, arg, '\n')
