@@ -2,8 +2,7 @@
 /* Usage: see https://github.com/jcschmidig/mixed-pipeline#readme */
 //
 module.exports = function($errHandler=console.error, $ppl=[[]]) {
-    const register = method => function(...funcs)
-        { $ppl.push({ method, funcs }); return this },
+    const register = n => function(...fn) { $ppl.push([ n, fn ]); return this },
     //
     execute = ($input, $state=new Map()) => $ppl.reduce( async (pipe, item) => {
         try      { pipe = process(item, $input, await pipe, $state) }
@@ -23,8 +22,8 @@ const METHODS = {
 },
 //
 isBroken = pipe => !Array.isArray(pipe) || pipe.includes(null),
-process = ({ method, funcs }, input, pipe, state) =>   isBroken(pipe) ||
-    METHODS[method] ({ funcs, pipe, args:pipe.concat(input), state }) || pipe,
+process = ([name, funcs], input, pipe, state) => isBroken(pipe)     ||
+    METHODS[name] ({ funcs, pipe, args:pipe.concat(input), state }) || pipe,
 //
 transform = (obj, proc)     => Object.fromEntries(Object.keys(obj).map( proc )),
 pack = (lst, proc, coll=[]) => Promise.all(coll.concat(lst.map( proc ))),
