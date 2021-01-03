@@ -77,7 +77,7 @@ const plFind = pipe()
 	.store(getTemplate)
 	.run(findPackages)
 	.run(getPaths)
-	.trace('found paths:')
+	.trace('found paths:', console.log)
 	.split(plProcess)  // => see above
 
 /*

@@ -14,13 +14,12 @@ module.exports = function($errHandler=console.error, $ppl=[[]]) {
 }
 //
 const METHODS = {
-    run ({ funcs, args })            { return pack(funcs, apply(args)) },
-    runShadow (props)                { this.run(props) },
-    store ({ funcs, args, state })   { funcs.map( map(state, apply(args)) ) },
+    run     ({ funcs, args })        { return pack(funcs, apply(args)) },
     restore ({ funcs, pipe, state }) { return pack(funcs, map(state), pipe) },
-    //
-    split ({ funcs:ppl, pipe:[args], state }) { ppl.map( exec(state, args) ) },
-    trace ({ funcs:[cmt='>>> trace', out=debug], args }) { out(cmt, { args }) }
+    store   ({ funcs, args, state }) { funcs.map( map(state, apply(args)) ) },
+    split   ({ funcs, pipe, state }) { funcs.map( exec(state, pipe[0]) ) },
+    trace   ({ funcs:[cmt], args })  { console.debug(`${cmt}\n`, args, '\n') },
+    runShadow (props)                { this.run(props) },
 },
 //
 isBroken = pipe => !Array.isArray(pipe) || pipe.includes(null),
@@ -31,5 +30,4 @@ transform = (obj, proc)     => Object.fromEntries(Object.keys(obj).map( proc )),
 pack = (lst, proc, coll=[]) => Promise.all(coll.concat(lst.map( proc ))),
 apply = arg          => fnc => fnc.apply(this, arg),
 map   = (m, arg)     => fnc => arg ? m.set(fnc.name, arg(fnc)) : m.get(fnc.name),
-exec  = (state, arg) => ppl => arg.map( input => ppl.execute(input, state) ),
-debug = (comment, arg)      => console.debug(`${comment}\n`, arg, '\n')
+exec  = (state, arg) => ppl => arg.map( input => ppl.execute(input, state) )

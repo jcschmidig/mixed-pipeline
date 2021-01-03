@@ -40,8 +40,7 @@ This package needs node version 12 or higher.
 - `store(<function>, ...)`: stores the output of the concurrently executed function(s) as an intermediate result without injecting the output to the pipeline.
 - `restore(<function>, ...)`: adds the output of the previously stored function(s) to the pipeline as if it had been produced concurrently with the function(s) before.
 - `split(<pipeline>, ...)`: adds new pipelines which will be executed for every element of the output array of the previous function.
-- `trace("<comment>", <output>)`: uses the function `<output>` (default: console.debug) to show the `<comment>` with the input parameters being consumed by the next method.<br>
-`<output>` takes two arguments: `<comment>` and { input } object
+- `trace("<comment>")`: uses `console.debug` to show the `<comment>` with the input parameters being consumed by the next method.<br>
 
 #### 5.2 Executing the Pipeline
 - `execute(input)`: Executes the pipeline with the given input. This input is also given to any following function(s) as last argument.
