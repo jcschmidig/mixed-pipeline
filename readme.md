@@ -68,7 +68,7 @@ pipeline()
     .run(findPaths)     // returns an array of subPaths
     .split(pipeline()   // executes a new pipeline for every subPath
         .restore(getTemplate)
-        .run(writeConfig)
+        .runShadow(writeConfig)
     )
 .execute("/myPath")     // starts the pipeline with the given path
 
@@ -81,6 +81,6 @@ function findPaths(path) {
 }
 
 function writeConfig(subPath, template) {
-    void fs.writeFile(subPath+'/config.json', template)
+    return fs.writeFile(subPath+'/config.json', template)
 }
 ```

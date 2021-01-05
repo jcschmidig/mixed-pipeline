@@ -1,13 +1,12 @@
 "use strict"
 /* Usage: see https://github.com/jcschmidig/mixed-pipeline#readme */
 //
-module.exports = function($errHandler=console.error, $ppl=[]) {
+module.exports = function(disp=console.error, $ppl=[]) {
     const register = n => function(...fn) { $ppl.push([ n, fn ]); return this },
     //
-    execute = ($input, $state=new Map()) => $ppl.reduce( async (pipe, item) => {
-        try      { pipe = process(item, $input, await pipe, $state) }
-        catch(e) { pipe = void $errHandler({ item, input:$input, error:e }) }
-        return     pipe }, [] )
+    execute = (input, state=new Map()) => $ppl.reduce( ($pipe, item) => $pipe
+        .then(pipe => process(item, input, pipe, state))
+        .catch(e => void disp({ item, input, error:e })), Promise.resolve([]) )
     //
     return { execute, ...transform(METHODS, name => [ name, register(name) ]) }
 }
