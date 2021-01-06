@@ -5,8 +5,8 @@ module.exports = function(disp=console.error, $ppl=[]) {
     const register = n => function(...fn) { $ppl.push([ n, fn ]); return this },
     //
     execute = (input, state=new Map()) => $ppl.reduce( ($pipe, item) => $pipe
-        .then(pipe => isBroken(pipe) || process(item, input, pipe, state))
-        .catch(e => void disp({ item, input, error:e })), Promise.resolve([]) )
+        .then( pipe => Array.isArray(pipe) && process(item, input, pipe, state))
+        .catch( err => void disp({ item, input, err }) ), Promise.resolve([]) )
     //
     return { execute, ...transform(METHODS, name => [ name, register(name) ]) }
 }
@@ -20,9 +20,8 @@ const METHODS = {
     runShadow (props)                { this.run(props) }
 },
 //
-isBroken = pipe => !Array.isArray(pipe) || pipe.includes(null),
-process = ([name, funcs], input, pipe, state) =>
-    METHODS[name] ({ funcs, pipe, args:pipe.concat(input), state }) || pipe,
+process = ([name, funcs], input, pipe, state) => pipe.includes(null) ||
+    METHODS[name] ({ funcs, pipe, args:pipe.concat(input), state })  || pipe,
 //
 transform = (obj, proc)     => Object.fromEntries(Object.keys(obj).map( proc )),
 pack = (lst, proc, coll=[]) => Promise.all(coll.concat(lst.map( proc ))),
