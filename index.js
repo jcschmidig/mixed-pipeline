@@ -1,9 +1,9 @@
 "use strict"
 /* Usage: see https://github.com/jcschmidig/mixed-pipeline#readme */
 //
-module.exports = function(disp=console.error, $ppl=[]) {
-    const register = n => function(...fn) { $ppl.push([ n, fn ]); return this },
-    //
+module.exports = function(disp=console.error) {
+    const $ppl = new Array(),
+    register = name => function(...fn) { $ppl.push([ name, fn ]); return this },
     execute = (input, state=new Map()) => $ppl.reduce( ($pipe, item) => $pipe
         .then( pipe => Array.isArray(pipe) && process(item, input, pipe, state))
         .catch( err => void disp({ item, input, err }) ), Promise.resolve([]) )
@@ -21,7 +21,7 @@ const METHODS = {
 },
 //
 process = ([name, funcs], input, pipe, state) => pipe.includes(null) ||
-    METHODS[name] ({ funcs, pipe, args:pipe.concat(input), state })  || pipe,
+    METHODS[name] ({ funcs, pipe, args: pipe.concat(input), state }) || pipe,
 //
 transform = (obj, proc)     => Object.fromEntries(Object.keys(obj).map( proc )),
 pack = (lst, proc, coll=[]) => Promise.all(coll.concat(lst.map( proc ))),
