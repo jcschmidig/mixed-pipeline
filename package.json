@@ -1,6 +1,6 @@
 {
   "name": "mixed-pipeline",
-  "version": "3.4.6",
+  "version": "3.4.7",
   "description": "Pipeline to process synchronous and asynchronous functions",
   "engines": {
         "node": ">=12"
