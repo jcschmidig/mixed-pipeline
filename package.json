@@ -1,6 +1,6 @@
 {
   "name": "mixed-pipeline",
-  "version": "3.4.8",
+  "version": "3.4.9",
   "description": "Pipeline to process synchronous and asynchronous functions",
   "engines": {
         "node": ">=12"
@@ -18,19 +18,21 @@
     "url": "git+https://github.com/jcschmidig/mixed-pipeline.git"
   },
   "keywords": [
-    "promise",
-    "pipeline",
-    "serial",
-    "concurrent",
-    "synchronous",
     "asynchronous",
+    "collection",
+    "concurrent",
+    "iterator",
+    "ordered",
+    "pipeline",
+    "promise",
+    "pure",
     "sequence",
+    "sequential",
+    "serial",
+    "synchronous",
     "task",
     "tasks",
-    "collection",
-    "iterator",
-    "await",
-    "ordered"
+    "waterfall"
   ],
   "author": "Jean-Claude Schmidig",
   "license": "MIT",

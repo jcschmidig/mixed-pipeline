@@ -2,14 +2,14 @@
 /* Usage: see https://github.com/jcschmidig/mixed-pipeline#readme */
 //
 module.exports = function(errHandler=console.error) {
-    const $ppl = new Array(Promise.resolve([])),
+    const $ppl = [], $init = Promise.resolve([]),
     //
     register = name => function(...funcs)
         { $ppl.push([ name, List.from(funcs) ]); return this },
     //
     execute = (input, state={}) => $ppl.reduce( ($pipe, item) => $pipe
         .then( pipe => Array.isArray(pipe) && process(item, input, pipe, state))
-        .catch( err => void errHandler({ item, input, err }) ))
+        .catch( err => void errHandler({ item, input, err }) ), $init )
     //
     return { execute, ...transform(METHODS, name => [ name, register(name) ]) }
 }
