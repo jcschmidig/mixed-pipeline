@@ -1,0 +1,16 @@
+{
+    "name": "$npm_package_config_name",
+    "version": "$npm_package_config_version",
+    "os": [
+        "darwin",
+        "linux"
+    ],
+    "publishConfig": {
+        "access": "public"
+    },
+    "keywords": [
+        "example",
+        "$npm_package_config_name"
+    ],
+    "license": "MIT"
+}
