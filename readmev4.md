@@ -71,9 +71,7 @@ import pipeline from 'mixed-pipeline/v4'
 pipeline([
     getTemplate,
     [ "template", getTemplate ],
-    [ findPaths, pipeline([
-        writeConfig
-    ]) ]
+    [ findPaths, pipeline([ writeConfig ]) ]
 ], { summary: true }
 ).execute("/myPath")     // starts the pipeline with the given path
 
