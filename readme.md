@@ -14,6 +14,6 @@ In this case, this module might be of some help for you.
 
 ## There are two versions
 
-- ![Version 3](#readmev3) (the default version for backward compatibility) uses a few verbs to steer the flow.
+- ![Version 3](blob/master/readmev3.md) (the default version for backward compatibility) uses a few verbs to steer the flow.
 
-- ![Version 4](#readmev4) has more options and uses a pure array to steer the flow more flexibly.
+- ![Version 4](blob/master/readmev4.md) has more options and uses a pure array to steer the flow more flexibly.

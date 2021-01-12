@@ -40,8 +40,8 @@ The pipeline constructor accepts two positioned arguments
     - `[<func>, ...]`: an array of functions executed simultaneously
     - `[<func>, <pipeline>, ...]`: an array of one function and one or more other pipelines executed simultaneously.
     the function should return an array of values which are launched with every pipeline and which appear in the corresponding pipeline as { execute } property
-    - `<text>`: invokes the traceHandler to output the current pipeline's results
-    - `[<text>, <func>, ...]`: invokes the traceHandler and outputs only the properties of the given function(s).
+    - `<label>`: invokes the traceHandler with the given label to output the current pipeline's results
+    - `[<label>, <func>, ...]`: invokes the traceHandler and outputs only the properties of the given function(s).
 - an object with the following options
     - `summary` (default: false): outputs at the end a table of all collected values through the traceHandler
     - `traceHandler` (default: console.debug): function to output collected values
