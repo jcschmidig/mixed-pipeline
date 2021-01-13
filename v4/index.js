@@ -15,8 +15,9 @@ module.exports = function( queue,
                 //
                 .catch( error => void errHandler({ queue:item, error }) )
                 //
-                , Promise.resolve($state) )
-                //
+                , Promise.resolve($state)
+            )
+            //
             summary && $state.then( state =>
                 trace('summary', [], state, traceHandler) )
         }
@@ -25,18 +26,26 @@ module.exports = function( queue,
 
 const process = (item, state, traceHandler) => {
     const [ head, ...tail ] = [].concat(item)
+    const tailIsEmptyOrHasFunc = listOfFuncOrEmpty(tail)
     let result
     //
     switch (typeof head) {
-        case 'string':
-            result = trace(head, tail, state, traceHandler)
-            break
-        //
         case 'function':
-            result = (tail.length && tail[0].execute)
-                ? split(head, tail, state)
-                : run([ head, ...tail ], state)
-            break
+            if (tailIsEmptyOrHasFunc) {
+                result = run([ head, ...tail ], state)
+                break
+            }
+            //
+            if (listOfProp(tail, "execute")) {
+                result = split(head, tail, state)
+                break
+            }
+        //
+        case 'string':
+            if (tailIsEmptyOrHasFunc) {
+                result = trace(head, tail, state, traceHandler)
+                break
+            }
         //
         default:
             throw new Error('unknown queue type')
@@ -46,7 +55,8 @@ const process = (item, state, traceHandler) => {
 },
 //
 run = async (funcs, state) => {
-    for (let i=0, func; i<funcs.length; i++) func = funcs[i],
+    for (let i=0, func; i<funcs.length; i++)
+        func = funcs[i],
         state[func.name] = await func(state)
     //
     return state
@@ -63,11 +73,16 @@ split = async (func, pipelines, state) => {
 },
 //
 trace = (comment, funcs, state, traceHandler) => {
-    state = funcs.length
-        ? transform(funcs, func => [ func.name, state[func.name] ])
-        : state
+    if (funcs.length) {
+        state = {
+            execute: state.execute,
+            ...transform(funcs, func => [ func.name, state[func.name] ])
+        }
+    }
     //
-    traceHandler(`\n${comment}\n`, state, '\n')
+    return void traceHandler(`\n${comment}\n`, state, '\n')
 },
 //
-transform = (list, proc) => Object.fromEntries(list.map( proc ))
+transform = (list, proc) => Object.fromEntries(list.map( proc )),
+listOfFuncOrEmpty = list => list.every( func => typeof func === 'function'),
+listOfProp = (list, prop) => !list.some( obj => !obj[prop] )
