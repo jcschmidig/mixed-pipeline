@@ -46,17 +46,16 @@ const process = async (item, state, traceHandler, propNameInput) => {
             if (!tail.length) break
             //
             if (listOfFunc(tail))
-                result.push(...(await run(tail, state))); break
+                { result.push(...(await run(tail, state))); break }
             //
             if (listOfProp(tail, FUNCNAME_EXECUTE))
-                split(result[0], tail, state); break
+                { split(result[0], tail, state); break }
         //
         case TYPE_STRING:
             if (listOfFuncOrEmpty(tail))
-                trace(head, tail, state, traceHandler, propNameInput); break
+                { trace(head, tail, state, traceHandler, propNameInput); break }
         //
-        default:
-            throw new Error(ERROR_UNKNOWN)
+        default: throw new Error(ERROR_UNKNOWN)
     }
     //
     return { ...state, ...arrToProp([ head, ...tail ], result) }
