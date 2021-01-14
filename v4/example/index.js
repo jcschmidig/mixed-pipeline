@@ -13,6 +13,7 @@ if (!String.prototype.replaceAll) {
 	}
 }
 
+const SUCCESS = () => true
 const PATH_PACKAGES = join(__dirname, 'packages')
 const TEMPLATE_FILENAME = join(__dirname, 'config.template')
 const CONFIG_NAME = 'config.js'
@@ -33,7 +34,7 @@ const noop = () => {}
 const template = () => readFile(TEMPLATE_FILENAME, UTF)
 
 // The starting point, uses the pipeline input to find the subdirs
-const packages = ({ execute:path }) =>
+const packages = ({ path }) =>
     readDirectory(path, { withFileTypes: true })
 
 // Filters the directories and extracts the path names
@@ -42,11 +43,11 @@ const packagePath = ({ packages }) => packages
 	.map(entry => join(PATH_PACKAGES, entry.name))
 
 // deletes already stored package files, ignoring any errors
-const deleteConfigFile = ({ execute:packagePath }) =>
-    deleteFile(join(packagePath, PACKAGE_NAME)).catch( noop )
+const deleteConfigFile = ({ packagePath }) =>
+    deleteFile(join(packagePath, PACKAGE_NAME)).catch( SUCCESS )
 
 // reads the config file of the package => example/<package>/config.js
-const packageConfig = ({ execute:packagePath }) =>
+const packageConfig = ({ packagePath }) =>
 	require(join(packagePath, CONFIG_NAME))
 
 // Gets the input from getConfig and getTemplate (added via restore)
@@ -56,7 +57,7 @@ const configOutput = ({ packageConfig, template }) =>
 		out.replaceAll(CONF_MARKER + key, value), template )
 
 // Writes the config file to disk
-const writeConfig = ({ configOutput, execute:packagePath }) =>
+const writeConfig = ({ configOutput, packagePath }) =>
 	writeFile(join(packagePath, PACKAGE_NAME), configOutput, UTF)
 
 // Runs concurrently with writeConfig and therefore gets also the config output
@@ -73,10 +74,10 @@ const pplProcess = pipe([
       configOutput,
       writeConfig,
 	  displaySuccess
-])
+], { propNameInput: 'packagePath'})
 
 const pplFind = pipe([
     [ template, packages ],
     [ packagePath, pplProcess ],
 	[ 'packages', packagePath ]
-]).execute(PATH_PACKAGES)
+], { summary: true, propNameInput: 'path' }).execute(PATH_PACKAGES)

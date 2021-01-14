@@ -41,17 +41,18 @@ The pipeline constructor accepts two positioned arguments
     - `[<func>, <pipeline>, ...]`: an array of one function and one or more other pipelines executed simultaneously.
     the function should return an array of values which are launched with every pipeline and which appear in the corresponding pipeline as { execute } property
     - `<label>`: invokes the traceHandler with the given label to output the current pipeline's results
-    - `[<label>, <func>, ...]`: invokes the traceHandler and outputs only the properties of the given function(s).
+    - `[<label>, <func>, ...]`: invokes the traceHandler and outputs only the properties of the given function(s)
 - an object with the following options
     - `summary` (default: false): outputs at the end a table of all collected values through the traceHandler
+    - `propNameInput` (default: 'execute'): defines the name of the property for the input argument (see 5.2)
     - `traceHandler` (default: console.debug): function to output collected values
     - `errHandler` (default: console.error): function to report errors
 
 #### 5.2 Executing the Pipeline
-- `execute(input)`: Executes the pipeline with the given input. This input appears as { execute } property in all functions of this pipeline. It is guarenteed that every line of the array is properly awaited before the next line is executed.
+- `execute(input)`: Executes the pipeline with the given input. This input appears as { [namePropInput] } property in all functions of this pipeline. It is guaranteed that every line of the array is properly awaited before the next line is executed.
 
 #### 5.3 Breaking conditions
-- Any error catched by the pipeline aborts the pipeline currently being executed.
+- Any error caught by the pipeline aborts the pipeline currently being executed.
 
 ### 6 Example
 

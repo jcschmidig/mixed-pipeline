@@ -1,88 +1,82 @@
 "use strict"
 /* Usage: see https://github.com/jcschmidig/mixed-pipeline#readme */
 //
-module.exports = function( queue,
+const FUNCNAME_EXECUTE = "execute"
+const TYPE_FUNCTION = "function", TYPE_STRING = "string"
+const ERROR_UNKNOWN = "unknown queue type"
+//
+module.exports = (
+    queue,
+    //
     { errHandler=console.error,
       traceHandler=console.debug,
+      propNameInput='execute',
       summary=false } = {}
-){
-    //
-    return {
-        execute (input, $state={}) {
-            $state = queue.reduce( (state, item) => state
-                .then( state => state &&
-                    process(item, { ...state, execute:input }, traceHandler) )
+) =>
+({
+    [FUNCNAME_EXECUTE] (input, $state={}) {
+        $state = queue.reduce(
+            (state, item) => state
+                .then( state => state && process(
+                    item,
+                    { ...state, [propNameInput]:input },
+                    traceHandler,
+                    propNameInput )
+                )
                 //
                 .catch( error => void errHandler({ queue:item, error }) )
-                //
-                , Promise.resolve($state)
-            )
             //
-            summary && $state.then( state =>
-                trace('summary', [], state, traceHandler) )
-        }
+            , Promise.resolve($state)
+        )
+        //
+        summary && $state.then(
+            state => trace('summary', [], state, traceHandler)
+        )
     }
-}
-
-const process = (item, state, traceHandler) => {
+})
+//
+const process = async (item, state, traceHandler, propNameInput) => {
     const [ head, ...tail ] = [].concat(item)
-    const tailIsEmptyOrHasFunc = listOfFuncOrEmpty(tail)
-    let result
+    let result = []
     //
     switch (typeof head) {
-        case 'function':
-            if (tailIsEmptyOrHasFunc) {
-                result = run([ head, ...tail ], state)
-                break
-            }
-            //
-            if (listOfProp(tail, "execute")) {
-                result = split(head, tail, state)
-                break
-            }
         //
-        case 'string':
-            if (tailIsEmptyOrHasFunc) {
-                result = trace(head, tail, state, traceHandler)
-                break
-            }
+        case TYPE_FUNCTION:
+            result.push(...(await run([ head ], state)))
+            if (!tail.length) break
+            //
+            if (listOfFunc(tail))
+                result.push(...(await run(tail, state))); break
+            //
+            if (listOfProp(tail, FUNCNAME_EXECUTE))
+                split(result[0], tail, state); break
+        //
+        case TYPE_STRING:
+            if (listOfFuncOrEmpty(tail))
+                trace(head, tail, state, traceHandler, propNameInput); break
         //
         default:
-            throw new Error('unknown queue type')
+            throw new Error(ERROR_UNKNOWN)
     }
     //
-    return result || state
+    return { ...state, ...arrToProp([ head, ...tail ], result) }
 },
 //
-run = async (funcs, state) => {
-    for (let i=0, func; i<funcs.length; i++)
-        func = funcs[i],
-        state[func.name] = await func(state)
-    //
-    return state
-},
+run = (funcs, state) => Promise.all(funcs.map( func => func(state) )),
 //
-split = async (func, pipelines, state) => {
-    state = await run([func], state )
-    //
-    pipelines.map( pipeline =>
-        [].concat(state[func.name]).map( input =>
-            pipeline.execute(input, state) ))
-    //
-    return state
-},
+split = (args, pipelines, state) => args.map( input =>
+        pipelines.map( pipeline => pipeline.execute(input, state) )),
 //
-trace = (comment, funcs, state, traceHandler) => {
-    if (funcs.length) {
-        state = {
-            execute: state.execute,
-            ...transform(funcs, func => [ func.name, state[func.name] ])
-        }
-    }
+trace = (comment, funcs, state, traceHandler, propNameInput) => {
+    if (funcs.length)
+        funcs = transform(funcs, func => [ func.name, state[func.name] ]),
+        state = { [propNameInput]: state[propNameInput], ...funcs }
     //
-    return void traceHandler(`\n${comment}\n`, state, '\n')
+    traceHandler(`\n${comment}\n`, state, '\n')
 },
 //
 transform = (list, proc) => Object.fromEntries(list.map( proc )),
-listOfFuncOrEmpty = list => list.every( func => typeof func === 'function'),
+arrToProp = (prop, list) => transform( list, (v, i) => [ [prop[i].name], v ] ),
+listOfFunc = list => list.length && listOfFuncOrEmpty(list),
+listOfFuncOrEmpty = list => list.every( func => typeof func === TYPE_FUNCTION),
 listOfProp = (list, prop) => !list.some( obj => !obj[prop] )
