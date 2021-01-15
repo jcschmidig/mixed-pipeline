@@ -59,11 +59,7 @@ const configOutput = ({ packageConfig, template }) =>
 // Writes the config file to disk
 const writeConfig = ({ configOutput, packagePath }) =>
 	writeFile(join(packagePath, PACKAGE_NAME), configOutput, UTF)
-
-// Runs concurrently with writeConfig and therefore gets also the config output
-const displaySuccess = ({ configOutput }) =>
-    display(JSON.parse(configOutput).name)
-
+		.then(() => display(JSON.parse(configOutput).name))
 /*
     Pipe definitions
  */
@@ -72,8 +68,7 @@ const displaySuccess = ({ configOutput }) =>
 const pplProcess = pipe([
     [ deleteConfigFile, packageConfig ],
       configOutput,
-      writeConfig,
-	  displaySuccess
+      writeConfig
 ], { propNameInput: 'packagePath'})
 
 const pplFind = pipe([
