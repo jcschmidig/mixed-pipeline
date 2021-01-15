@@ -2,16 +2,16 @@
 /* Usage: see https://github.com/jcschmidig/mixed-pipeline#readme */
 //
 const FUNCNAME_EXECUTE = "execute"
-const TYPE_FUNCTION = "function", TYPE_STRING = "string"
-const ERROR_UNKNOWN_TYPE = "unknown queue type"
+const TYPE_FUNCTION    = "function", TYPE_STRING = "string"
+const UNKNOWN_TYPE     = "unknown queue type"
 //
 module.exports = (
     queue,
     //
-    { errHandler=console.error,
-      traceHandler=console.debug,
-      propNameInput=FUNCNAME_EXECUTE,
-      summary=false } = {}
+    {   errHandler    = console.error,
+        traceHandler  = console.debug,
+        propNameInput = FUNCNAME_EXECUTE,
+        summary       = false   } = {}
 ) =>
 ({
     [FUNCNAME_EXECUTE]: ($input, $state={}) => queue
@@ -26,7 +26,7 @@ module.exports = (
             //
             , Promise.resolve($state) )
         //
-        .then(state => summary && !trace('summary', [], state, traceHandler))
+        .then( state => summary && !trace('summary', [], state, traceHandler) )
 })
 //
 const process = async (item, state, traceHandler, propNameInput) => {
@@ -49,7 +49,7 @@ const process = async (item, state, traceHandler, propNameInput) => {
             if ( listOfFuncOrEmpty(tail) &&
                  !trace(head, tail, state, traceHandler, propNameInput) ) break
         //
-        default: throw new Error(ERROR_UNKNOWN_TYPE)
+        default: throw new Error(UNKNOWN_TYPE)
     }
     //
     return { ...state, ...arrToProp(result, item) }
@@ -68,8 +68,8 @@ trace = (comment, funcs, state, traceHandler, propNameInput) => {
     return void traceHandler(`\n${comment}\n`, state, '\n')
 },
 //
-transform = (list, proc) => Object.fromEntries(list.map( proc )),
-arrToProp = (list, prop) => transform( list, (v, i) => [ [prop[i].name], v ] ),
-listOfFunc = list => list.length && listOfFuncOrEmpty(list),
-listOfFuncOrEmpty = list => list.every( func => typeof func === TYPE_FUNCTION),
+transform  = (list, proc) => Object.fromEntries(list.map( proc )),
+arrToProp  = (list, prop) => transform( list, (v, i) => [ [prop[i].name], v ] ),
+listOfFunc         = list => list.length && listOfFuncOrEmpty(list),
+listOfFuncOrEmpty  = list => list.every( func => typeof func === TYPE_FUNCTION),
 listOfProp = (list, prop) => !list.some( obj => !obj[prop] )
