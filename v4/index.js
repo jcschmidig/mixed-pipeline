@@ -1,9 +1,10 @@
 "use strict"
 /* Usage: see https://github.com/jcschmidig/mixed-pipeline#readme */
 //
-const FUNCNAME_EXECUTE = "execute"
-const TYPE_FUNCTION    = "function", TYPE_STRING = "string"
-const UNKNOWN_TYPE     = "unknown queue type"
+const FUNCNAME_EXECUTE = "execute",
+      TYPE_FUNCTION    = "function",
+      TYPE_STRING      = "string",
+      UNKNOWN_TYPE     = "unknown queue type"
 //
 module.exports = (
     queue,
@@ -60,13 +61,11 @@ run = (funcs, state) => Promise.all(funcs.map( func => func(state) )),
 split = (args, pipelines, state) => void args.map( input =>
     pipelines.map( pipeline => pipeline.execute(input, state) )),
 //
-trace = (comment, funcs, state, traceHandler, propNameInput) => {
-    if (funcs.length)
-        funcs = transform(funcs, func => [ func.name, state[func.name] ]),
-        state = { [propNameInput]: state[propNameInput], ...funcs }
-    //
-    return void traceHandler(`\n${comment}\n`, state, '\n')
-},
+trace = (cmt, funcs, state, traceHandler, propNameInput) => void traceHandler(
+    `\n${cmt}\n`, funcs.length
+    ? { [propNameInput]: state[propNameInput],
+        ...transform(funcs, func => [ func.name, state[func.name] ]) }
+    : state ),
 //
 transform  = (list, proc) => Object.fromEntries(list.map( proc )),
 arrToProp  = (list, prop) => transform( list, (v, i) => [ [prop[i].name], v ] ),
