@@ -1,74 +1,61 @@
 "use strict"
-/* Usage: see https://github.com/jcschmidig/mixed-pipeline#readme */
+/* https://github.com/jcschmidig/mixed-pipeline/blob/master/readmev4.md */
 //
 const FUNCNAME_EXECUTE = "execute",
       TYPE_FUNCTION    = "function",
       TYPE_STRING      = "string",
       UNKNOWN_TYPE     = "unknown queue type"
 //
-module.exports = (
-    queue,
-    //
-    {   errHandler    = console.error,
-        traceHandler  = console.debug,
-        propNameInput = FUNCNAME_EXECUTE,
-        summary       = false   } = {}
-) =>
+module.exports = ( queue,
+                   //
+                   { errHandler    = console.error,
+                     traceHandler  = console.debug,
+                     propNameInput = FUNCNAME_EXECUTE,
+                     summary       = false   } = {} ) =>
 ({
     [FUNCNAME_EXECUTE]: ($input, $state={}) => queue
-        .reduce(
-            (state, item) => state
-                .then( state => state && process(
-                    item, { ...state, [propNameInput]:$input },
-                    traceHandler, propNameInput )
-                )
-                //
-                .catch( error => void errHandler({ queue:item, error }) )
+        .reduce( (state, item) =>
+            state.then(   data => data && process( item, data, traceHandler ))
+                 .catch( error => void errHandler({ queue:item, error }) )
             //
-            , Promise.resolve($state) )
+            , Promise.resolve({ ...$state, [propNameInput]:$input }) )
         //
-        .then( state => summary && !trace('summary', [], state, traceHandler) )
+        .then( data => summary && trace('summary', [], data, traceHandler) )
 })
 //
-const process = async (item, state, traceHandler, propNameInput) => {
+const process = async (item, data, traceHandler, /*private*/ result) => {
     const [ head, ...tail ] = item = [].concat(item)
-    let result = []
     //
-    switch (typeof head) {
-        //
-        case TYPE_FUNCTION:
-            const [ input ] = result = await run([ head ], state)
-            if (!tail.length ) break
-            //
-            if ( listOfFunc(tail) &&
-                 result.push(...(await run(tail, state))) ) break
-            //
-            if ( listOfProp(tail, FUNCNAME_EXECUTE) &&
-                 !split(input, tail, state) ) break
-        //
-        case TYPE_STRING:
-            if ( listOfFuncOrEmpty(tail) &&
-                 !trace(head, tail, state, traceHandler, propNameInput) ) break
-        //
-        default: throw new Error(UNKNOWN_TYPE)
+    // <label>[, <func>, ...]
+    if ( typeof head === TYPE_STRING && listOfFuncOrEmpty(tail) &&
+         trace(head, tail, data, traceHandler) ) return data
+    //
+    // <func>[, <func> | <pipeline>, ...]
+    if (typeof head === TYPE_FUNCTION) {
+        const [ input ] = result = await run([ head ], data)
+             // <func>
+        if ( !tail.length ||
+             //  or <func>, <func>[, ...]
+             (listOfFunc(tail) && result.push(...(await run(tail, data)))) ||
+             //  or <func>, <pipeline>[, ...]
+             (listOfProp(tail, FUNCNAME_EXECUTE) && split(input, tail, data))
+        ) return { ...data, ...map(result, item) }
     }
-    //
-    return { ...state, ...arrToProp(result, item) }
+    // misconfigured item
+    throw new Error(UNKNOWN_TYPE)
 },
-//
-run = (funcs, state) => Promise.all(funcs.map( func => func(state) )),
-//
-split = (args, pipelines, state) => void args.map( input =>
-    pipelines.map( pipeline => pipeline.execute(input, state) )),
-//
-trace = (cmt, funcs, state, traceHandler, propNameInput) => void traceHandler(
-    `\n${cmt}\n`, funcs.length
-    ? { [propNameInput]: state[propNameInput],
-        ...transform(funcs, func => [ func.name, state[func.name] ]) }
-    : state ),
+// <func>[, <func>, ...]
+run = (funcs, data) => Promise.all(funcs.map( func => func(data) )),
+// <func, <pipeline>[, ...]
+split = (args, pipelines, data) => !![].concat(args).map( input =>
+    pipelines.map( pipeline => pipeline.execute(input, data) )),
+// <label>[, <func>, ...]
+trace = (cmt, funcs, data, traceHandler) => !void traceHandler(
+    `\n${cmt}\n`, funcs.length ? reduce(funcs, data) : data ),
 //
 transform  = (list, proc) => Object.fromEntries(list.map( proc )),
-arrToProp  = (list, prop) => transform( list, (v, i) => [ [prop[i].name], v ] ),
+map        = (list, prop) => transform( list, (v, i) => [ [prop[i].name], v ] ),
+reduce     = (list, prop) => transform( list, v => [ v.name, prop[v.name ]] ),
 listOfFunc         = list => list.length && listOfFuncOrEmpty(list),
 listOfFuncOrEmpty  = list => list.every( func => typeof func === TYPE_FUNCTION),
 listOfProp = (list, prop) => !list.some( obj => !obj[prop] )
