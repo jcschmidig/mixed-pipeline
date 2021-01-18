@@ -20,42 +20,38 @@ module.exports = ( queue,
             //
             , Promise.resolve({ ...$state, [propNameInput]:$input }) )
         //
-        .then( data => summary && trace('summary', [], data, traceHandler) )
+        .then( data => summary && data && trace('summary', data, traceHandler) )
 })
 //
-const process = async (item, data, traceHandler, /*private*/ result) => {
+const process = async (item, data, traceHandler) => {
     const [ head, ...tail ] = item = [].concat(item)
+    let result, input
     //
-    // <label>[, <func>, ...]
-    if ( typeof head === TYPE_STRING && listOfFuncOrEmpty(tail) &&
-         trace(head, tail, data, traceHandler) ) return data
+    if (hasFunction(item)) result = await run(item, data)
     //
-    // <func>[, <func> | <pipeline>, ...]
-    if (typeof head === TYPE_FUNCTION) {
-        const [ input ] = result = await run([ head ], data)
-             // <func>
-        if ( !tail.length ||
-             //  or <func>, <func>[, ...]
-             (listOfFunc(tail) && result.push(...(await run(tail, data)))) ||
-             //  or <func>, <pipeline>[, ...]
-             (listOfProp(tail, FUNCNAME_EXECUTE) && split(input, tail, data))
-        ) return { ...data, ...map(result, item) }
-    }
-    // misconfigured item
-    throw new Error(UNKNOWN_TYPE)
+    else if (isFunction(head) && hasPipeline(tail))
+        [input] = result = await run([ head ], data),
+        split(input, tail, data)
+    //
+    else if (isString(head) && hasFuncOrIsEmpty(tail))
+        trace(head, data, traceHandler, tail)
+    //
+    else throw new Error(UNKNOWN_TYPE)
+    //
+    return result ? { ...data, ...mapWith(result, item) } : data
 },
-// <func>[, <func>, ...]
-run = (funcs, data) => Promise.all(funcs.map( func => func(data) )),
-// <func, <pipeline>[, ...]
-split = (args, pipelines, data) => !![].concat(args).map( input =>
-    pipelines.map( pipeline => pipeline.execute(input, data) )),
-// <label>[, <func>, ...]
-trace = (cmt, funcs, data, traceHandler) => !void traceHandler(
-    `\n${cmt}\n`, funcs.length ? reduce(funcs, data) : data ),
 //
+run   = (funcs, data) => Promise.all(funcs.map( func => func(data) )),
+split = (args, pipelines, data) => void [].concat(args).map( input =>
+         pipelines.map( pipeline => pipeline.execute(input, data) )),
+trace = (cmt, data, traceHandler, funcs=[]) => void traceHandler(
+         `\n${cmt}\n`, funcs.length ? reduceWith(funcs, data) : data ),
+//
+isString           = val  => typeof val === TYPE_STRING,
+isFunction         = val  => typeof val === TYPE_FUNCTION,
+hasFunction        = list => list.length && hasFuncOrIsEmpty(list),
+hasFuncOrIsEmpty   = list => list.every( func => isFunction(func)),
+hasPipeline        = list => !list.some( obj => !obj[FUNCNAME_EXECUTE] ),
 transform  = (list, proc) => Object.fromEntries(list.map( proc )),
-map        = (list, prop) => transform( list, (v, i) => [ [prop[i].name], v ] ),
-reduce     = (list, prop) => transform( list, v => [ v.name, prop[v.name ]] ),
-listOfFunc         = list => list.length && listOfFuncOrEmpty(list),
-listOfFuncOrEmpty  = list => list.every( func => typeof func === TYPE_FUNCTION),
-listOfProp = (list, prop) => !list.some( obj => !obj[prop] )
+mapWith    = (list, prop) => transform( list, (v, i) => [ [prop[i].name], v ] ),
+reduceWith = (list, prop) => transform( list, v => [ v.name, prop[v.name ]] )
