@@ -22,7 +22,6 @@ const UTF = 'utf8'
 const PACKAGE_NAME = 'config.json'
 const MESSAGE = dir => `${dir}'s ${PACKAGE_NAME} successfully written!`
 const display = arg => arg && console.log(MESSAGE(arg))
-const noop = () => {}
 
 /*
     Pipeline helper
@@ -39,8 +38,8 @@ const packages = ({ path }) =>
 
 // Filters the directories and extracts the path names
 const packagePath = ({ packages }) => packages
-	.filter(entry => entry.isDirectory())
-	.map(entry => join(PATH_PACKAGES, entry.name))
+	.filter( entry => entry.isDirectory() )
+	.map(    entry => join(PATH_PACKAGES, entry.name) )
 
 // deletes already stored package files, ignoring any errors
 const deleteConfigFile = ({ packagePath }) =>
