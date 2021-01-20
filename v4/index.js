@@ -38,7 +38,7 @@ const process = async (item, data, traceHandler) => {
 //
 run   = (funcs, data) => Promise.all(funcs.map( func => func(data) )),
 split = (args, pipelines, data) => void [].concat(args).map( input =>
-         pipelines.map( pipeline => pipeline.execute(input, data) )),
+         pipelines.map( pipeline => pipeline[FUNCNAME_EXECUTE](input, data) )),
 //
 is        = (value, type) => typeof value === type,
 hasFunction        = list => list.length && hasFuncOrIsEmpty(list),
@@ -46,5 +46,5 @@ hasFuncOrIsEmpty   = list => list.every( func => is(func, TYPE.Function)),
 hasPipeline        = list => !list.some( obj => !obj[FUNCNAME_EXECUTE] ),
 transform  = (list, proc) => Object.fromEntries(list.map( proc )),
 mapWith    = (list, prop) => transform( list, (v, i) => [ [prop[i].name], v ] ),
-reduceWith = (list, prop) => transform( list, v => [ v.name, prop[v.name ]] ),
+reduceWith = (list, prop) => transform( list, v => [ v.name, prop[v.name ] ] ),
 debug     = (label, data) => console.debug(`\n${label}\n`, data)
