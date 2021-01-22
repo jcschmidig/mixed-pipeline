@@ -45,6 +45,6 @@ hasFunction        = list => list.length && hasFuncOrIsEmpty(list),
 hasFuncOrIsEmpty   = list => list.every( func => is(func, TYPE.Function)),
 hasPipeline        = list => !list.some( obj => !obj[FUNCNAME_EXECUTE] ),
 transform  = (list, proc) => Object.fromEntries(list.map( proc )),
-mapWith    = (list, prop) => transform( list, (v, i) => [ [prop[i].name], v ] ),
-reduceWith = (list, prop) => transform( list, v => [ v.name, prop[v.name ] ] ),
+mapWith    = (list, prop) => transform( list, (v, i) => [ prop[i].name, v ] ),
+reduceWith = (list, prop) => transform( list, v => [ v.name, prop[v.name] ] ),
 debug     = (label, data) => console.debug(`\n${label}\n`, data)
