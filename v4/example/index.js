@@ -14,6 +14,7 @@ if (!String.prototype.replaceAll) {
 }
 
 const SUCCESS = () => true
+const FAIL    = () => false
 const PATH_PACKAGES = join(__dirname, 'packages')
 const TEMPLATE_FILENAME = join(__dirname, 'config.template')
 const CONFIG_NAME = 'config.js'
@@ -33,23 +34,22 @@ const display = arg => arg && console.log(MESSAGE(arg))
 const template = () => readFile(TEMPLATE_FILENAME, UTF)
 
 // The starting point, uses the pipeline input to find the subdirs
-const packages = ({ path }) =>
-    readDirectory(path, { withFileTypes: true })
-
-// Filters the directories and extracts the path names
-const packagePath = ({ packages }) => packages
-	.filter( entry => entry.isDirectory() )
-	.map(    entry => join(PATH_PACKAGES, entry.name) )
+const packagePath = async ({ path }) =>
+    (await readDirectory(path, { withFileTypes: true }))
+		.filter( entry => entry.isDirectory() )
+		.map(    entry => join(PATH_PACKAGES, entry.name) )
 
 // deletes already stored package files, ignoring any errors
 const deleteConfigFile = ({ packagePath }) =>
-    deleteFile(join(packagePath, PACKAGE_NAME)).catch( SUCCESS )
+    deleteFile(join(packagePath, PACKAGE_NAME))
+		.then( SUCCESS )
+		.catch( FAIL )
 
 // reads the config file of the package => example/<package>/config.js
 const packageConfig = ({ packagePath }) =>
 	require(join(packagePath, CONFIG_NAME))
 
-// Gets the input from getConfig and getTemplate (added via restore)
+// Gets the input from packageConfig and template
 // and merges the config content
 const configOutput = ({ packageConfig, template }) =>
 	Object.entries(packageConfig).reduce( (out, [key, value]) =>
@@ -59,19 +59,22 @@ const configOutput = ({ packageConfig, template }) =>
 const writeConfig = ({ configOutput, packagePath }) =>
 	writeFile(join(packagePath, PACKAGE_NAME), configOutput, UTF)
 		.then(() => display(JSON.parse(configOutput).name))
+		.then( SUCCESS )
+		.catch( FAIL )
 /*
     Pipe definitions
  */
 
 // Splitted pipeline, runs for every path found in the main pipeline
 const pplProcess = pipe([
-    [ deleteConfigFile, packageConfig ],
+    [ packageConfig, deleteConfigFile ],
       configOutput,
       writeConfig
-], { propNameInput: 'packagePath'})
+], { summary: true, propNameInput: 'packagePath'})
 
 const pplFind = pipe([
-    [ template, packages ],
+      template,
     [ packagePath, pplProcess ],
-	[ 'packages', packagePath ]
-], { summary: true, propNameInput: 'path' }).execute(PATH_PACKAGES)
+], { propNameInput: 'path' })
+
+pplFind.execute(PATH_PACKAGES)

@@ -1,50 +1,87 @@
 "use strict"
 /* https://github.com/jcschmidig/mixed-pipeline/blob/master/readmev4.md */
 //
+
 const FUNCNAME_EXECUTE = "execute",
       TYPE             = { String: 'string', Function: 'function' },
       UNKNOWN_TYPE     = "unknown queue type"
 //
-module.exports = ( queue,
-                   //
-                   { errHandler    = console.error,
-                     traceHandler  = debug,
-                     propNameInput = FUNCNAME_EXECUTE,
-                     summary       = false   } = {} ) =>
+module.exports = (  queue,
+                    // options
+                    { errHandler    = console.error,
+                      traceHandler  = debug,
+                      propNameInput = FUNCNAME_EXECUTE,
+                      summary       = false
+                    } = {}
+                 ) =>
 ({
-    [FUNCNAME_EXECUTE]: ($input, $state={}) => queue
-        .reduce( (state, item) =>
-            state.then(   data => data && process( item, data, traceHandler ))
-                 .catch( error => void errHandler({ queue:item, error }) )
-            //
-            , Promise.resolve({ ...$state, [propNameInput]:$input }) )
-        //
-        .then( data => summary && data && traceHandler('summary', data) )
+    [ FUNCNAME_EXECUTE ]: ($input, $state={}) => void
+        queue.reduce(
+            async (prState, pipe) => process(pipe, await prState, traceHandler),
+            Promise.resolve({ ...$state, [ propNameInput ]: $input })
+        )
+        .catch( errHandler )
+        .then( data => summary && traceHandler('summary', data) )
 })
 //
-const process = async (item, data, traceHandler) => {
-    const [ head, ...tail ] = item = [].concat(item)
+const process = async (pipe, data, traceHandler) => {
+    const [ head, ...tail ] = pipe = [].concat(pipe)
+    const  exec = pipe => run(pipe, data)
     let result, input
     //
-    if (hasFunction(item)) result = await run(item, data)
-    else if (is(head, TYPE.Function) && hasPipeline(tail))
-        [input] = result = await run([ head ], data), split(input, tail, data)
-    else if (is(head, TYPE.String) && hasFuncOrIsEmpty(tail))
-        traceHandler(head, tail.length ? reduceWith(tail, data) : data)
-    else throw new Error(UNKNOWN_TYPE)
+    switch(true) {
+        // a list of functions to execute
+        case hasFunction(pipe) :
+            result = await exec(pipe)
+            break
+
+        // a function and a list of pipeline objects to execute
+        case isFunc(head) && hasPipeline(tail) :
+            [input] = result = await exec([ head ])
+            fork(input, tail, data)
+            break
+
+        // a caption and optional function results to trace the pipeline
+        case isString(head) && hasFuncOrIsEmpty(tail) :
+            traceHandler(head, reduceWith(tail, data))
+            break
+
+        // never mind
+        default : throw new Error(`${UNKNOWN_TYPE} in pipe [${collect(pipe)}]`)
+    }
     //
-    return result ? { ...data, ...mapWith(result, item) } : data
+    return { ...data, ...mapWith(result, pipe) }
 },
+
+// runs all funcs simultaneously
+run = (funcs, data) => Promise.all( funcs.map( func => func(data) ) ),
+
+// runs the pipeline(s) simultaneously for every argument
+fork = (args, pipes, data) =>
+    Promise.all( [].concat(args).map( runPipes(pipes, data) ) ),
+
+runPipes = (pipes, data) => input =>
+    pipes.map( runPipe(input, data) ),
+
+runPipe = (input, state) => pipe => void
+    pipe[FUNCNAME_EXECUTE](input, state),
+
 //
-run   = (funcs, data) => Promise.all(funcs.map( func => func(data) )),
-split = (args, pipelines, data) => void [].concat(args).map( input =>
-         pipelines.map( pipeline => pipeline[FUNCNAME_EXECUTE](input, data) )),
-//
-is        = (value, type) => typeof value === type,
-hasFunction        = list => list.length && hasFuncOrIsEmpty(list),
-hasFuncOrIsEmpty   = list => list.every( func => is(func, TYPE.Function)),
-hasPipeline        = list => !list.some( obj => !obj[FUNCNAME_EXECUTE] ),
-transform  = (list, proc) => Object.fromEntries(list.map( proc )),
-mapWith    = (list, prop) => transform( list, (v, i) => [ prop[i].name, v ] ),
-reduceWith = (list, prop) => transform( list, v => [ v.name, prop[v.name] ] ),
-debug     = (label, data) => console.debug(`\n${label}\n`, data)
+isString         = value => typeof value === TYPE.String,
+isFunc           = value => typeof value === TYPE.Function,
+hasFunction      = list  => list.length && hasFuncOrIsEmpty(list),
+hasFuncOrIsEmpty = list  => list.every( func => isFunc(func) ),
+hasPipeline      = list  => list.every( obj => isFunc(obj[FUNCNAME_EXECUTE]) ),
+collect          = list  => [].concat(list).map( i => i.name || i ).join(),
+debug    = (label, data) => console.debug(`\n${label}\n`, data),
+
+// convert array to object using desired mapping
+transform  = (list, proc, def={}) =>
+    list && list.length
+        ? Object.fromEntries(list.map( proc ))
+        : def,
+
+mapWith    = (list, prop) =>
+    transform( list, (v, i) => [ prop[i].name, v ] ),
+reduceWith = (list, prop) =>
+    transform( list, v => [ v.name, prop[v.name] ], prop )
