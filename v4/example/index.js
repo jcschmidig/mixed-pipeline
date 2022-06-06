@@ -31,7 +31,7 @@ const display = arg => arg && console.log(MESSAGE(arg))
  */
 
 // stores the configuration template into the pipeline
-const template = () => readFile(TEMPLATE_FILENAME, UTF)
+const template = () => readFile(TEMPLATE_FILENAME, UTF).catch( FAIL )
 
 // The starting point, uses the pipeline input to find the subdirs
 const packagePath = async ({ path }) =>
