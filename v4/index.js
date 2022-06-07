@@ -4,7 +4,7 @@
 
 const FUNC_EXECUTE = "execute",
       TYPE         = { String: 'string', Function: 'function' },
-      UNKNOWN_TYPE = "unknown queue type"
+      UNKNOWN_TYPE = "Unknown queue type"
 //
 
 module.exports = (...args) => new Queue(...args)
@@ -16,7 +16,8 @@ class Queue {
     get options() { return this.#options || {} }
     get errHandler() { return this.options.errHandler || console.error }
     get traceHandler() { return this.options.traceHandler || debug }
-    get propNameInput() { return this.options.propNameInput || FUNC_EXECUTE }
+    get funcNameMain() { return this.options.funcNameMain || FUNC_EXECUTE }
+    get propNameInput() { return this.options.propNameInput || this.funcNameMain }
     get summary() { return this.options.summary || false }
 
     constructor(queue, options) {
@@ -24,26 +25,31 @@ class Queue {
         this.#options = options
 
         // define public execution method
-        Object.defineProperty(this, FUNC_EXECUTE, {
+        Object.defineProperty(this, this.funcNameMain, {
             value: (...args) => this.#execute(...args)
         })
     }
 
+    // Main method
     #execute(input, state={}) {
         this.queue
             // every item is processed sequentially
             .reduce(
                 async (data, item) => this.#serial(await data, item),
-                { ...state, [this.propNameInput]: input }
+                { ...state, [ this.propNameInput ]: input }
             )
+
             // show me what happened
             .then( data => this.#recap(data) )
+
             // document any error and terminate
             .catch( err => this.#showError(err) )
     }
 
-    #recap(data) { this.summary && this.traceHandler('summary', data) }
+    #recap(data) { this.summary && this.traceHandler('summary', data) }    
+    #showError(error) { this.errHandler(showError(error)) }
 
+    // returns the data for the next item
     async #serial(data, item) {
         const pipe = ensureList(item)
         const result = await this.#process(pipe, data)
@@ -51,7 +57,7 @@ class Queue {
         return { ...data, ...mapWith( result, pipe) }
     }
 
-    // may return a promise
+    // handles the different pipe types
     #process(pipe, data) {
         const [ head, ...tail ] = pipe
         let result
@@ -84,26 +90,35 @@ class Queue {
         return Promise.all( funcs.map( func => func(data) ) )
     }
 
+    // prepares running the queues asynchronously
     async #runPipe(func, queues, data) {
-        const args = await func(data)
+        const result = this.#runFunc(ensureList(func), data)
+        const [ args ] = await result
         if (!Array.isArray(args)) throw new Error(arrError(func))
-        for(const arg of args) queues.map( this.#runQueue(arg, data) )
         //
-        return [ args ]
+        this.#runQueue(args, queues, data)
+        //
+        return result
     }
 
-    #runQueue(arg, data) { return queue => queue[FUNC_EXECUTE](arg, data) }
-
-    #showError(error) { this.errHandler(showError(error)) }
+    // runs the matrix of args and queues
+    #runQueue(args, queues, data) {
+        for(const arg of args)
+            for(const queue of queues)
+                // calls the main method of the queue
+                funcMain(queue).call(queue, arg, data)
+    }
 }
 
 //
 const
-isString         = value => typeof value === TYPE.String,
-isFunc           = value => typeof value === TYPE.Function,
+is       = (value, type) => typeof value === type,
+isString         = value => is(value, TYPE.String),
+isFunc           = value => is(value, TYPE.Function),
+funcMain         = queue => queue[ queue.funcNameMain ],
 ensureList       = value => [].concat(value),
-hasFunc   = (list, prop) => list.every( e => isFunc(prop ? e[prop] : e) ),
-hasQueue         = list  => hasFunc(list, FUNC_EXECUTE),
+hasFunc          = list  => list.every( isFunc ),
+hasQueue         = list  => list.every( item => isFunc(funcMain(item))),
 collect          = list  => ensureList(list).map( e => e.name || e ).join(),
 debug    = (label, data) => console.debug(`\n${label}\n`, data),
 
@@ -116,6 +131,6 @@ mapWith    = (list, prop) => transform( list, (v, i) => [ prop[i].name, v ] ),
 reduceWith = (list, prop) =>
     transform( list, v => [ v.name, prop[v.name] ], prop ),
 
-pipeError  = pipe => `${UNKNOWN_TYPE} in pipe [${collect(pipe)}]`,
-arrError   = func => `result of [${func.name}] should be an Array!`,
-showError = error => `ERROR: ${error.message}`
+pipeError  = pipe => `${UNKNOWN_TYPE} in pipe [${collect(pipe)}].`,
+arrError   = func => `Result of [${func.name}] should be an Array.`,
+showError = error => `Oops! ${error.message}\n`
