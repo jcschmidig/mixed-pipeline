@@ -46,7 +46,7 @@ class Queue {
             .catch( err => this.#showError(err) )
     }
 
-    #recap(data) { this.summary && this.traceHandler('summary', data) }    
+    #recap(data) { this.summary && this.traceHandler('summary', data) }
     #showError(error) { this.errHandler(showError(error)) }
 
     // returns the data for the next item
@@ -90,7 +90,7 @@ class Queue {
         return Promise.all( funcs.map( func => func(data) ) )
     }
 
-    // prepares running the queues asynchronously
+    // prepares running the queues simultaneously 
     async #runPipe(func, queues, data) {
         const result = this.#runFunc(ensureList(func), data)
         const [ args ] = await result
