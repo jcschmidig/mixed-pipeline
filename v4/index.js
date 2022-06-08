@@ -2,7 +2,7 @@
 /* https://github.com/jcschmidig/mixed-pipeline/blob/master/readmev4.md */
 //
 
-const { isString, isFunction } = require('util')
+const { isString, isFunction, isArray } = require('util')
 
 const FUNC_EXECUTE = "execute",
       TYPE         = { String: 'string', Function: 'function' },
@@ -37,7 +37,7 @@ class Queue {
             this.#showError(nameError(this.funcNameMain))
 
         // define public execution method
-        defineMain(this, (...args) => this.#execute(...args))
+        defineMain(this, this.#execute)
     }
 
     // Main method
@@ -74,34 +74,28 @@ class Queue {
     // handles the different pipe types
     #process(pipe, data) {
         const [ head, ...tail ] = pipe
-        let result
         //
         switch(true) {
             // a list of functions to execute
             case hasFunc(pipe) :
-                result = this.#runFunc(pipe, data)
-                break
+                return this.#runFunc(pipe, data)
 
             // a function and a list of queues to execute
             case isFunction(head) && hasQueue(tail) :
-                result = this.#runPipe(head, tail, data)
-                break
+                return this.#runPipe(head, tail, data)
 
             // a caption and optional function results to trace the pipeline
             case isString(head) && hasFunc(tail) :
                 this.traceHandler(head, reduceWith(tail, data))
-                break
-
-            // oops, never mind
-            default : throw new Error(pipeError(pipe))
+                return
         }
-        //
-        return result
+        // oops, never mind
+        throw pipeError(pipe)
     }
 
     // runs all funcs simultaneously and returns the result as a promise
     #runFunc(funcs, data) {
-        return Promise.all( funcs.map( func => func(data) ) )
+        return Promise.all( mapFunc(funcs, data) )
     }
 
     // prepares running the queues simultaneously
@@ -109,24 +103,24 @@ class Queue {
         const result = this.#runFunc(ensureList(func), data)
         //
         const [ args ] = await result
-        if (!Array.isArray(args)) throw new Error(arrError(func))
+        if (!isArray(args)) throw arrError(func)
         //
         const process = this.#runQueue(args, queues, data)
+
         // check result of queues if executed synchronously
-        if (this.processInSync && !(await process).every( Boolean ))
-            throw new Error(processError())
+        if (this.processInSync && !has(await process, Boolean))
+            throw processError()
         //
         return result
     }
 
     // runs the matrix of args and queues as a Promise
     #runQueue(args, queues, data) {
-        const q = []
-        for(const arg of args)
-        for(const queue of queues)
-            q.push( run(queue, arg, data) )
+        const matrix = []
+        for(const arg of args) /*  X  */ for(const queue of queues)
+            matrix.push( run(queue, arg, data) )
         //
-        return Promise.all(q)
+        return Promise.all(matrix)
     }
 }
 
@@ -137,14 +131,16 @@ defProperty      = Object.defineProperty,
 classProperties  = cls   => Object.getOwnPropertyNames(cls.prototype),
 ensureList       = value => [].concat(value),
 collect          = list  => ensureList(list).map( el => el?.name || el ).join(),
-hasFunc          = list  => list.every( isFunction ),
-hasQueue         = list  => list.every( funcMain?.bind(isFunction) ),
+has       = (list, func) => list.every( func ),
+hasFunc          = list  => has(list, isFunction),
+hasQueue         = list  => has(list, funcMain?.bind(isFunction)),
+mapFunc = (list, ...arg) => list.map( func => func(...arg)),
 
 propMain         = obj   => [ obj, obj.funcNameMain ],
 funcMain         = obj   => descriptor( ...propMain(obj) )?.value,
 defineMain = (obj, func) => defProperty( ...propMain(obj), { value: func } ),
-
 run   = (obj, arg, data) => funcMain(obj).call(obj, arg, data),
+
 debug    = (label, data) => console.debug(`\n${label}\n`, data),
 
 // convert array to object using desired mapping
@@ -154,8 +150,9 @@ mapWith    = (list, prop) => transform( list, (v, i) => [ prop[i].name, v ] ),
 reduceWith = (list, prop) =>
     transform( list, v => [ v.name, prop[v.name] ], prop ),
 
-nameError  = name => new Error(`Option funcNameMain '${name}' is invalid.`),
-pipeError  = pipe => `${UNKNOWN_TYPE} in pipe [${collect(pipe)}].`,
-processError = () => `Failure in sub processe(s).`,
-arrError   = func => `Result of [${func.name}] should be an Array.`,
+objErr    = text => new Error(text),
+nameError = name => objErr(`Option funcNameMain '${name}' is invalid.`),
+pipeError = pipe => objErr(`${UNKNOWN_TYPE} in pipe [${collect(pipe)}].`),
+processError = _ => objErr(`Failure in sub processe(s).`),
+arrError  = func => objErr(`Result of [${func.name}] should be an Array.`),
 showError = error => `Oops! ${error.message}\n`
