@@ -2,6 +2,8 @@
 /* https://github.com/jcschmidig/mixed-pipeline/blob/master/readmev4.md */
 //
 
+const { isString, isFunction } = require('util')
+
 const FUNC_EXECUTE = "execute",
       TYPE         = { String: 'string', Function: 'function' },
       UNKNOWN_TYPE = "Unknown queue type"
@@ -12,44 +14,56 @@ module.exports = (...args) => new Queue(...args)
 class Queue {
     #queue
     #options
+    #invalid
     get queue() { return this.#queue || [] }
     get options() { return this.#options || {} }
+    get processInSync() { return this.options.processInSync || false }
     get errHandler() { return this.options.errHandler || console.error }
     get traceHandler() { return this.options.traceHandler || debug }
     get funcNameMain() { return this.options.funcNameMain || FUNC_EXECUTE }
     get propNameInput() { return this.options.propNameInput || this.funcNameMain }
     get summary() { return this.options.summary || false }
 
+    #isNameInvalid() {
+        return classProperties(Queue).find(name => name === this.funcNameMain)
+    }
+
     constructor(queue, options) {
         this.#queue   = queue
         this.#options = options
 
+        // check execution name
+        if (this.#invalid = this.#isNameInvalid())
+            this.#showError(nameError(this.funcNameMain))
+
         // define public execution method
-        Object.defineProperty(this, this.funcNameMain, {
-            value: (...args) => this.#execute(...args)
-        })
+        defineMain(this, (...args) => this.#execute(...args))
     }
 
     // Main method
     #execute(input, state={}) {
-        this.queue
-            // every item is processed sequentially
+        if (this.#invalid) return Promise.resolve(false)
+        //
+        return this.queue
+            // process the queue items sequentially
             .reduce(
                 async (data, item) => this.#serial(await data, item),
                 { ...state, [ this.propNameInput ]: input }
             )
 
-            // show me what happened
-            .then( data => this.#recap(data) )
+            // show me what happened and terminate with true
+            .then( this.#recap.bind(this) )
+            .then( _ => true )
 
             // document any error and terminate
-            .catch( err => this.#showError(err) )
+            .catch( this.#showError.bind(this) )
     }
 
-    #recap(data) { this.summary && this.traceHandler('summary', data) }
-    #showError(error) { this.errHandler(showError(error)) }
+    #recap(data)  { this.summary && this.traceHandler('summary', data) }
+    #showError(e) { this.errHandler(showError(e)); return false }
 
-    // returns the data for the next item
+    /* processes the current item and
+       returns the accumulated data for the next item */
     async #serial(data, item) {
         const pipe = ensureList(item)
         const result = await this.#process(pipe, data)
@@ -69,7 +83,7 @@ class Queue {
                 break
 
             // a function and a list of queues to execute
-            case isFunc(head) && hasQueue(tail) :
+            case isFunction(head) && hasQueue(tail) :
                 result = this.#runPipe(head, tail, data)
                 break
 
@@ -85,52 +99,63 @@ class Queue {
         return result
     }
 
-    // runs all funcs simultaneously and returns a promise
+    // runs all funcs simultaneously and returns the result as a promise
     #runFunc(funcs, data) {
         return Promise.all( funcs.map( func => func(data) ) )
     }
 
-    // prepares running the queues simultaneously 
+    // prepares running the queues simultaneously
     async #runPipe(func, queues, data) {
         const result = this.#runFunc(ensureList(func), data)
+        //
         const [ args ] = await result
         if (!Array.isArray(args)) throw new Error(arrError(func))
         //
-        this.#runQueue(args, queues, data)
+        const process = this.#runQueue(args, queues, data)
+        // check result of queues if executed synchronously
+        if (this.processInSync && !(await process).every( Boolean ))
+            throw new Error(processError())
         //
         return result
     }
 
-    // runs the matrix of args and queues
+    // runs the matrix of args and queues as a Promise
     #runQueue(args, queues, data) {
+        const q = []
         for(const arg of args)
-            for(const queue of queues)
-                // calls the main method of the queue
-                funcMain(queue).call(queue, arg, data)
+        for(const queue of queues)
+            q.push( run(queue, arg, data) )
+        //
+        return Promise.all(q)
     }
 }
 
 //
 const
-is       = (value, type) => typeof value === type,
-isString         = value => is(value, TYPE.String),
-isFunc           = value => is(value, TYPE.Function),
-funcMain         = queue => queue[ queue.funcNameMain ],
+descriptor       = Object.getOwnPropertyDescriptor,
+defProperty      = Object.defineProperty,
+classProperties  = cls   => Object.getOwnPropertyNames(cls.prototype),
 ensureList       = value => [].concat(value),
-hasFunc          = list  => list.every( isFunc ),
-hasQueue         = list  => list.every( item => isFunc(funcMain(item))),
-collect          = list  => ensureList(list).map( e => e.name || e ).join(),
+collect          = list  => ensureList(list).map( el => el?.name || el ).join(),
+hasFunc          = list  => list.every( isFunction ),
+hasQueue         = list  => list.every( funcMain?.bind(isFunction) ),
+
+propMain         = obj   => [ obj, obj.funcNameMain ],
+funcMain         = obj   => descriptor( ...propMain(obj) )?.value,
+defineMain = (obj, func) => defProperty( ...propMain(obj), { value: func } ),
+
+run   = (obj, arg, data) => funcMain(obj).call(obj, arg, data),
 debug    = (label, data) => console.debug(`\n${label}\n`, data),
 
 // convert array to object using desired mapping
 transform  = (list, proc, def={}) =>
-    list && list.length
-        ? Object.fromEntries(list.map( proc ))
-        : def,
+    list && list.length ? Object.fromEntries(list.map( proc )) : def,
 mapWith    = (list, prop) => transform( list, (v, i) => [ prop[i].name, v ] ),
 reduceWith = (list, prop) =>
     transform( list, v => [ v.name, prop[v.name] ], prop ),
 
+nameError  = name => new Error(`Option funcNameMain '${name}' is invalid.`),
 pipeError  = pipe => `${UNKNOWN_TYPE} in pipe [${collect(pipe)}].`,
+processError = () => `Failure in sub processe(s).`,
 arrError   = func => `Result of [${func.name}] should be an Array.`,
 showError = error => `Oops! ${error.message}\n`

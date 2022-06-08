@@ -75,6 +75,6 @@ const pplProcess = pipe([
 const pplFind = pipe([
       template,
     [ packagePath, pplProcess ],
-], { propNameInput: 'path' })
+], { propNameInput: 'path', processInSync: true })
 
-pplFind.execute(PATH_PACKAGES)
+pplFind.execute(PATH_PACKAGES).then( c => console.log("Success:", c))

@@ -17,7 +17,7 @@ Just write pure functions and let the pipeline handle the rest.
 
 ### 2. Prerequisites
 
-This package needs node version 12 or higher.
+This package needs node version 16 or higher.
 
 ### 3. Installation
 
@@ -47,12 +47,16 @@ The pipeline constructor accepts two positioned arguments
     - `propNameInput` (default: 'execute'): defines the name of the property for the input argument (see 5.2)
     - `traceHandler` (default: console.debug): function to output collected values
     - `errHandler` (default: console.error): function to report errors
+    - `processInSync` (default: false): waits for all pipelines to be processed before terminating
 
 #### 5.2 Executing the Pipeline
 - `execute(input)`: Executes the pipeline with the given input. This input appears as { [namePropInput] } property in all functions of this pipeline. It is guaranteed that every line of the array is properly awaited before the next line is executed.
 
 #### 5.3 Breaking conditions
 - Any error caught by the pipeline aborts the pipeline currently being executed.
+
+#### 5.4 Return value
+- Returns a Promise resolved to false if any pipeline has been interrupted by an error, otherwise true.
 
 ### 6 Example
 
