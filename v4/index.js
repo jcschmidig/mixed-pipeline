@@ -14,7 +14,7 @@ module.exports = (...args) => new Queue(...args)
 class Queue {
     #queue
     #options
-    #invalid
+    #invalid = true
     get queue() { return this.#queue || [] }
     get options() { return this.#options || {} }
     get processInSync() { return this.options.processInSync || false }
@@ -34,13 +34,13 @@ class Queue {
 
         // check execution name
         if (this.#invalid = this.#isNameInvalid())
-            this.#showError(nameError(this.funcNameMain))
+            this.#showError(invalidName(this.funcNameMain))
 
         // define public execution method
         defineMain(this, this.#execute)
     }
 
-    // Main method
+    // Main method returns a promise with success flag (true/false)
     #execute(input, state={}) {
         if (this.#invalid) return Promise.resolve(false)
         //
@@ -60,7 +60,7 @@ class Queue {
     }
 
     #recap(data)  { this.summary && this.traceHandler('summary', data) }
-    #showError(e) { this.errHandler(showError(e)); return false }
+    #showError(e) { e.message && this.errHandler(showError(e)); return false }
 
     /* processes the current item and
        returns the accumulated data for the next item */
@@ -75,22 +75,22 @@ class Queue {
     #process(pipe, data) {
         const [ head, ...tail ] = pipe
         //
-        switch(true) {
-            // a list of functions to execute
+        switch(true) {      /* mind the order */
+            // 1 - a list of functions to execute
             case hasFunc(pipe) :
                 return this.#runFunc(pipe, data)
 
-            // a function and a list of queues to execute
+            // 2 - a function and a list of queues to execute
             case isFunction(head) && hasQueue(tail) :
                 return this.#runPipe(head, tail, data)
 
-            // a caption and optional function results to trace the pipeline
+            // 3 - a caption and optional function results to trace the pipeline
             case isString(head) && hasFunc(tail) :
                 this.traceHandler(head, reduceWith(tail, data))
                 return
         }
         // oops, never mind
-        throw pipeError(pipe)
+        throw unknownType(pipe)
     }
 
     // runs all funcs simultaneously and returns the result as a promise
@@ -103,21 +103,22 @@ class Queue {
         const result = this.#runFunc(ensureList(func), data)
         //
         const [ args ] = await result
-        if (!isArray(args)) throw arrError(func)
+        if (!isArray(args)) throw expectArray(func)
         //
         const process = this.#runQueue(args, queues, data)
 
         // check result of queues if executed synchronously
         if (this.processInSync && !has(await process, Boolean))
-            throw processError()
+            throw new Error()
         //
         return result
     }
 
-    // runs the matrix of args and queues as a Promise
+    // runs the matrix of args and queues in a promise
     #runQueue(args, queues, data) {
         const matrix = []
-        for(const arg of args) /*  X  */ for(const queue of queues)
+        //
+        for(const arg of args)  /*  X  */  for(const queue of queues)
             matrix.push( run(queue, arg, data) )
         //
         return Promise.all(matrix)
@@ -144,15 +145,14 @@ run   = (obj, arg, data) => funcMain(obj).call(obj, arg, data),
 debug    = (label, data) => console.debug(`\n${label}\n`, data),
 
 // convert array to object using desired mapping
-transform  = (list, proc, def={}) =>
-    list && list.length ? Object.fromEntries(list.map( proc )) : def,
+transform  = (list, proc, def={}) => isArray(list) && list.length
+    ? Object.fromEntries(list.map( proc )) : def,
 mapWith    = (list, prop) => transform( list, (v, i) => [ prop[i].name, v ] ),
 reduceWith = (list, prop) =>
     transform( list, v => [ v.name, prop[v.name] ], prop ),
 
-objErr    = text => new Error(text),
-nameError = name => objErr(`Option funcNameMain '${name}' is invalid.`),
-pipeError = pipe => objErr(`${UNKNOWN_TYPE} in pipe [${collect(pipe)}].`),
-processError = _ => objErr(`Failure in sub processe(s).`),
-arrError  = func => objErr(`Result of [${func.name}] should be an Array.`),
-showError = error => `Oops! ${error.message}\n`
+objErr       = text => new Error(text),
+invalidName  = name => objErr(`Option funcNameMain '${name}' is invalid.`),
+unknownType  = pipe => objErr(`${UNKNOWN_TYPE} in pipe [${collect(pipe)}].`),
+expectArray  = func => objErr(`Result of [${func.name}] should be an Array.`),
+showError   = error => `Oops! ${error.message}\n`
