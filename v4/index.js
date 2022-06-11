@@ -2,36 +2,52 @@
 /* https://github.com/jcschmidig/mixed-pipeline/blob/master/readmev4.md */
 //
 const { isString, isFunction, isArray, isObject } = require('util')
-const FUNC_EXECUTE = "execute",
-      TYPE         = { String: 'string', Function: 'function' }
+const FUNC_EXECUTE = "execute"
 //
 
-module.exports = (...args) => new Queue(...args)
+module.exports = (...args) => Reflect.construct(Pipe, args)
 
-class Queue {
-    #queue
-    #options
-    get errHandler()    { return this.#options.errHandler || console.error }
-    get traceHandler()  { return this.#options.traceHandler || debug }
-    get propNameInput() { return this.#options.propNameInput || FUNC_EXECUTE }
-    get summary()       { return this.#options.summary || false }
-    get processInSync() { return this.#options.processInSync || false }
+class Pipe {
+    queue
+    errHandler
+    traceHandler
+    propNameInput
+    summary
+    processInSync
 
     constructor(queue, options) {
-        this.#queue   = isArray(queue)    ? queue   : []
-        this.#options = isObject(options) ? options : {}
-        //
-        Object.defineProperty(this, FUNC_EXECUTE, { value: this.#execute })
+        const opt  = isObject(options) ? options : {}
+        this.queue = isArray(queue)    ? queue   : []
+
+        this.errHandler    = opt.errHandler || console.error
+        this.traceHandler  = opt.traceHandler || debug
+        this.propNameInput = opt.propNameInput || FUNC_EXECUTE
+        this.summary       = opt.summary || false
+        this.processInSync = opt.processInSync || false
+    }
+
+    execute(input, state) {
+        return new Queue(this).execute(input, state)
+    }
+}
+
+class Queue {
+    #pp
+    #queue
+
+    constructor(pipe) {
+        this.#pp    = pipe
+        this.#queue = pipe.queue
     }
 
     // Main method returns a promise with success flag (true/false)
-    #execute(input, state={}) {
+    execute(input, state={}) {
         //
         return this.#queue
             // process the queue items sequentially
             .reduce(
                 async (data, item) => this.#serial(await data, item),
-                { ...state, [ this.propNameInput ]: input }
+                { ...state, [this.#pp.propNameInput]: input }
             )
 
             // show me what happened and terminate with true
@@ -40,9 +56,6 @@ class Queue {
             // document any error and terminate with false
             .catch( err => { this.#showError(err); return false } )
     }
-
-    #recap(data)  { this.summary && this.traceHandler('summary', data) }
-    #showError(e) { e.message && this.errHandler(showError(e)) }
 
     /* processes the current item and
        returns the accumulated data for the next item */
@@ -60,10 +73,10 @@ class Queue {
         switch(true) {      /* mind the order */
             // 1 - a list of functions to execute
             case hasFunc(pipe) :
-                return this.#runFunc(pipe, data)
+                return runFunc(pipe, data)
 
-            // 2 - a function and a list of queues to execute
-            case isFunction(head) && this.#hasQueue(tail) :
+            // 2 - a function and a list of pipes to execute
+            case isFunction(head) && this.#hasPipe(tail) :
                 return this.#runPipe(head, tail, data)
 
             // 3 - a caption and optional function results to trace the pipeline
@@ -75,38 +88,35 @@ class Queue {
         throw unknownType(pipe)
     }
 
-    #hasQueue(list) {
-        return list.every( obj => obj instanceof this.constructor )
-    }
-
-    // runs all funcs simultaneously and returns the result as a promise
-    #runFunc(funcs, data) {  return Promise.all( mapFunc(funcs, data) ) }
-
     // prepares running the queues simultaneously
-    async #runPipe(func, queues, data) {
-        const result = this.#runFunc(ensureList(func), data)
+    async #runPipe(func, pipes, data) {
+        const result = runFunc(ensureList(func), data)
         //
         const [ args ] = await result
         if (!isArray(args)) throw expectArray(func)
         //
-        const process = this.#runQueue(args, queues, data)
+        const process = this.#run(args, pipes, data)
 
         // check result of queues if executed synchronously
-        if (this.processInSync && !(await process).every( Boolean ))
+        if (this.#pp.processInSync && !(await process).every( Boolean ))
             throw new Error()
         //
         return result
     }
 
-    // runs the matrix of args and queues in a promise
-    #runQueue(args, queues, data) {
+    // runs the matrix of args and pipes in a promise
+    #run(args, pipes, data) {
         const matrix = []
         //
-        for(const arg of args) /*  X  */ for(const queue of queues)
-            matrix.push( queue.#execute(arg, data) )
+        for(const arg of args) /*  X  */ for(const pipe of pipes)
+            matrix.push( pipe.execute(arg, data) )
         //
         return Promise.all(matrix)
     }
+
+    #hasPipe(list) { return list.every( obj => obj instanceof Pipe ) }
+    #recap(data)   { this.#pp.summary && this.#pp.traceHandler('summary', data) }
+    #showError(e)  { e.message && this.#pp.errHandler(showError(e.message)) }
 }
 
 //
@@ -114,18 +124,21 @@ const
 ensureList       = value => [].concat(value),
 collect          = list  => ensureList(list).map( el => el?.name || el ).join(),
 hasFunc          = list  => list.every( isFunction ),
-mapFunc = (list, ...arg) => list.map( func => func(...arg) ),
+runFunc  = (funcs, data) => Promise.all(funcs.map( func => func(data) )),
 
 // convert array to object using desired mapping
-transform  = (list, proc, def={}) => isArray(list) && list.length
-    ? Object.fromEntries(list.map( proc )) : def,
-mapWith    = (list, prop) => transform( list, (v, i) => [ prop[i].name, v ] ),
-reduceWith = (list, prop) =>
-    transform( list, v => [ v.name, prop[v.name] ], prop ),
+mapWith    = (data, funcs) =>
+    transform( data, (value, index) => [ funcs[index].name, value ] ),
+
+reduceWith = (funcs, data) =>
+    transform( funcs, func => [ func.name, data[func.name] ], data ),
+
+transform  = (list, proc, def={}) =>
+    isArray(list) && list.length ? Object.fromEntries(list.map( proc )) : def,
 
 // error handling
-objErr       = text => new Error(text),
-unknownType  = pipe => objErr(`Unknown queue type in pipe [${collect(pipe)}].`),
-expectArray  = func => objErr(`Result of [${func.name}] should be an Array.`),
-showError   = error => `Oops! ${error.message}\n`,
-debug    = (label, data) => console.debug(`\n${label}\n`, data)
+objErr      = text  => new Error(text),
+unknownType = pipe  => objErr(`Unknown queue type in pipe [${collect(pipe)}].`),
+expectArray = func  => objErr(`Result of [${func.name}] should be an Array.`),
+showError   = error => `Oops! ${error}\n`,
+debug       = (label, data) => console.debug(`\n${label}\n`, data)
