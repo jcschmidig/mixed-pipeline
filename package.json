@@ -1,19 +1,11 @@
 {
   "name": "mixed-pipeline",
-  "version": "4.3.1",
+  "version": "4.3.2",
   "description": "Pipeline to process synchronous and asynchronous functions",
   "engines": {
         "node": ">=16"
   },
   "main": "index.js",
-  "files": [
-    "index.js",
-    "v3/*",
-    "v4/*",
-    "readme.md",
-    "readmev3.md",
-    "readmev4.md"
-  ],
   "scripts": {
     "test":  "node ./v3/example",
     "test:v3": "node ./v3/example",
