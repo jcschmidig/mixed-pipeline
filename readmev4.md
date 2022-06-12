@@ -57,6 +57,7 @@ The pipeline constructor accepts two positioned arguments
 
 #### 5.4 Return value
 - Returns a Promise resolved to false if any pipeline has been interrupted by an error, otherwise true.
+- To wait for the final result of the pipelin(s) the `processInSync` option must be set to true.
 
 ### 6 Example
 

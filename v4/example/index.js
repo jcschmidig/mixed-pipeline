@@ -70,7 +70,7 @@ const pplProcess = pipe([
     [ packageConfig, deleteConfigFile ],
       configOutput,
       writeConfig
-], { summary: true, propNameInput: 'packagePath'})
+], { propNameInput: 'packagePath' })
 
 const pplFind = pipe([
       template,
