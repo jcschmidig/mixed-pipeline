@@ -2,6 +2,7 @@
 /* https://github.com/jcschmidig/mixed-pipeline/blob/master/readmev4.md */
 //
 const { isBoolean, isString, isFunction, isArray } = require('util')
+const EMPTY_ARRAY = []
 //
 
 module.exports = class Queue {
@@ -54,7 +55,7 @@ module.exports = class Queue {
             case isString(head) && hasFunc(tail) :
                 const trace = tail.length ? reduceWith(tail, data) : data
                 this.traceHandler(head, trace)
-                return
+                return Promise.resolve(EMPTY_ARRAY)
         }
         // oops, never mind
         throw unknownType(pipe)
@@ -63,23 +64,25 @@ module.exports = class Queue {
     // prepares running the queues simultaneously
     runPipe(func, pipes, data) {
         //
-        return runFunc(ensureList(func), data)
-            .then( async res => {
-                const [args] = res
-                if (!isArray(args)) throw expectArray(func.name)
+        return  runFunc(ensureList(func), data)
+                .then( async res => {
+                    const [args] = res
+                    if (!isArray(args)) throw expectArray(func.name)
 
-                await this.checkSync(
-                    this.launch(args, pipes, data)
-                )
-                //
-                return res
-            })
+                    await this.checkSync(
+                        this.launch(args, pipes, data)
+                    )
+                    //
+                    return res
+                })
     }
 
     // check result of queues if executed synchronously
     async checkSync(process) {
         if (!this.pipe.processInSync) return
-        if (!(await process).every( isTrue )) throw new Error()
+        //
+        if (!(await process).every( isSuccess ))
+            throw new Error()
     }
 
     // runs the matrix of args and pipes in a promise
@@ -87,7 +90,9 @@ module.exports = class Queue {
         const matrix = []
         //
         for(const pipe of pipes) /*  X  */ for(const arg of args)
-            matrix.push( pipe.execute(arg, data) )
+            matrix.push(
+                pipe.execute(arg, data)
+            )
         //
         return Promise.all(matrix)
     }
@@ -101,11 +106,11 @@ module.exports = class Queue {
 const
 ensureList       = val => [].concat(val),
 collect          = list => ensureList(list)
-                            .map( elem => elem && elem.name || elem )
-                            .join(', '),
+                           .map( elem => elem && elem.name || elem )
+                           .join(', '),
 hasFunc          = list => list.every( isFunction ),
 runFunc = (funcs, data) => Promise.all(funcs.map( func => func(data) )),
-isTrue            = val => isBoolean(val) && val,
+isSuccess         = val => isBoolean(val) && val,
 
 // convert array to object using desired mapping
 mapWith    = (data, funcs) =>
@@ -114,7 +119,7 @@ mapWith    = (data, funcs) =>
 reduceWith = (funcs, data) =>
     transform( funcs, func => [ func.name, data[func.name] ] ),
 
-transform  = (list, proc) => Object.fromEntries( (list || []).map( proc ) ),
+transform  = (list, proc) => Object.fromEntries( list.map( proc ) ),
 
 // error handling
 objErr      = text => new Error(text),
