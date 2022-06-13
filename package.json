@@ -1,9 +1,9 @@
 {
   "name": "mixed-pipeline",
-  "version": "4.3.2",
+  "version": "4.3.3",
   "description": "Pipeline to process synchronous and asynchronous functions",
   "engines": {
-        "node": ">=16"
+        "node": ">=12"
   },
   "main": "index.js",
   "scripts": {

@@ -17,7 +17,7 @@ Just write pure functions and let the pipeline handle the rest.
 
 ### 2. Prerequisites
 
-This package needs node version 16 or higher.
+This package needs node version 12 or higher.
 
 ### 3. Installation
 
