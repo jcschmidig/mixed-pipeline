@@ -14,8 +14,8 @@ module.exports = class Queue {
     }
 
     // Main method returns a promise with success flag (true/false)
-    execute(input, state={}) {
-        return this.queue
+    execute(input, state={}) { return(
+        this.queue
             // process the queue items sequentially
             .reduce(
                 async (data, item) => this.process(await data, ensureList(item)),
@@ -28,11 +28,11 @@ module.exports = class Queue {
 
             // document any error and terminate with failure
             .catch( err => { this.showError(err); return false } )
-    }
+    )}
 
     /* processes the current item and
        returns the accumulated data for the next item */
-    process(data, pipe) { return (
+    process(data, pipe) { return(
         this.handleType(pipe, data)
             .then( mergeData(pipe, data) )
     )}
@@ -61,7 +61,7 @@ module.exports = class Queue {
     }
 
     // prepares running the queues simultaneously
-    runPipe(func, pipes, data) { return (
+    runPipe(func, pipes, data) { return(
         runFunc(ensureList(func), data)
         .then( async result => {
             if (await this.checkSync(
@@ -71,9 +71,9 @@ module.exports = class Queue {
     )}
 
     // check result of process list if executed synchronously
-    checkSync(procList) { return (
-        !this.pipe.processInSync || procList.then( throwOnFailure )
-    )}
+    checkSync(procList) {
+        return !this.pipe.processInSync || procList.then( throwOnFailure )
+    }
 
     // runs the matrix of args and pipes in a promise
     launch(args, pipes, data) {
@@ -92,7 +92,7 @@ module.exports = class Queue {
 
 //
 const
-ensureList       = val => [].concat(val),
+ensureList       = val  => [].concat(val),
 collect          = list => ensureList(list)
                            .map( elem => elem && elem.name || elem )
                            .join(', '),
@@ -108,7 +108,7 @@ mapWith    = (data, funcs) =>
 reduceWith = (funcs, data) =>
     transform( funcs, func => [ func.name, data[func.name] ] ),
 
-transform   = (list, proc) => Object.fromEntries( list.map( proc ) ),
+transform  =  (list, proc) => Object.fromEntries( list.map( proc ) ),
 
 // error handling
 checkArray = (arr, msg) => {
