@@ -71,9 +71,9 @@ module.exports = class Queue {
     )}
 
     // check result of process list if executed synchronously
-    procSync(list) {
-        return !this.pipe.processInSync || list.then(checkSuccess)
-    }
+    procSync(list) { return(
+        Promise.resolve(!this.pipe.processInSync || list.then(checkSuccess))
+    )}
 
     // runs the matrix of args and pipes in a promise
     launch(args, pipes, data) {
