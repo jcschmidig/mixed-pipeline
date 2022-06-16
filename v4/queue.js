@@ -66,17 +66,10 @@ module.exports = class Queue {
                 const args = checkArray(result[0], func)
                 const queues = this.launch(args, pipes, data)
                 //
-                return this.maySync(queues, result)
+                return this.pipe.processInSync
+                    ? queues.then(hasSuccess).then(checkState(result))
+                    : result
             })
-    )}
-
-    /* returns the result either in a promise after checking the queues' state
-       or directly without considering it */
-    maySync(queues, result) { return(
-        this.pipe.processInSync
-            ? queues.then(hasSuccess)
-                    .then(checkState(result))
-            : result
     )}
 
     // runs the matrix of args and pipes in a promise
@@ -109,13 +102,14 @@ mergeData = (pipe, data) => result => ({ ...data, ...mapWith(result, pipe) }),
 
 // convert array to object using desired mapping
 mapWith    = (data, funcs) =>
-    transform( data, (value, index) => [ funcs[index].name, value ] ),
+    transform( data.filter( (_, i) => funcs[i].name ),
+              (value, index) => [ funcs[index].name, value ] ),
 
 reduceWith = (funcs, data) =>
     transform( funcs, ({name}) => [ name, data[name] ], data ),
 
 transform  =  (list, proc, defValue={}) =>
-    list.length
+    isArray(list) && list.length
         ? Object.fromEntries( list.map( proc ) )
         : defValue,
 
