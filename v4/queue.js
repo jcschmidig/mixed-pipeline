@@ -1,8 +1,7 @@
 "use strict"
 /* https://github.com/jcschmidig/mixed-pipeline/blob/master/readmev4.md */
 //
-const { isBoolean, isString, isFunction, isArray, isNullOrUndefined }
-    = require('util')
+const { isBoolean, isString, isFunction, isArray } = require('util')
 //
 
 module.exports = class Queue {
@@ -36,7 +35,6 @@ module.exports = class Queue {
     process(pipe) { return(
         data => Promise.resolve(this.handleType(pipe, data))
                        .then(ensureList)
-                       .then(reomoveInvalid)
                        .then(mergeData(pipe, data))
     )}
 
@@ -126,7 +124,6 @@ check = (cond, value=cond, errMsg) => cond && value || throwError(errMsg),
 throwError  = msg  => { throw Error(msg) },
 checkState = result => state => check(state, result),
 checkArray = (arr, msg) => check(isArray(arr), arr, expectArray(msg)),
-reomoveInvalid   = list => list.filter(item => !isNullOrUndefined(item)),
 unknownType = pipe => `Unknown queue type in pipe [ ${collect(pipe)} ].`,
 expectArray = ({name}) => `Result of [${name}] should be an Array.`,
 dispError   = msg  => `Oops! ${msg}\n`,
