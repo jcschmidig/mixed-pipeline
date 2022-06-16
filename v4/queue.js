@@ -1,7 +1,8 @@
 "use strict"
 /* https://github.com/jcschmidig/mixed-pipeline/blob/master/readmev4.md */
 //
-const { isBoolean, isString, isFunction, isArray } = require('util')
+const { isBoolean, isString, isFunction, isArray, isNullOrUndefined }
+    = require('util')
 //
 
 module.exports = class Queue {
@@ -24,19 +25,20 @@ module.exports = class Queue {
             )
 
             // show me what happened and terminate with success
-            .then(data => { this.recap(data); return true })
+            .then(this.execReturn(this.recap, true))
 
             // document any error and terminate with failure
-            .catch(err => { this.showError(err); return false })
+            .catch(this.execReturn(this.showError, false))
     )}
 
     /* processes the current item and
        returns the accumulated data for the next item */
-    process(pipe) {
-        return data => Promise.resolve(this.handleType(pipe, data))
-                              .then(ensureList)
-                              .then(mergeData(pipe, data))
-    }
+    process(pipe) { return(
+        data => Promise.resolve(this.handleType(pipe, data))
+                       .then(ensureList)
+                       .then(reomoveInvalid)
+                       .then(mergeData(pipe, data))
+    )}
 
     // handles the different pipe types
     handleType(pipe, data) {
@@ -53,26 +55,30 @@ module.exports = class Queue {
 
             // 3 - a caption and optional function results to trace the pipeline
             case isString(head) && hasFunc(tail) :
-                this.traceHandler(head, reduceWith(tail, data))
-                return
+                return this.traceHandler(head, reduceWith(tail, data))
         }
         // oops, never mind
         throwError(unknownType(pipe))
     }
 
-    // prepares running the queues simultaneously
+    // launches the queues simultaneously and sync-s on demand
     runPipe(func, pipes, data) { return(
         runFunc(ensureList(func), data)
-        .then(result => {
-            const args = checkArray(result[0], func)
-            const queues = this.launch(args, pipes, data)
-            return this.procSync(queues).then(checkSync(result))
-        })
+            .then(result => {
+                const args = checkArray(result[0], func)
+                const queues = this.launch(args, pipes, data)
+                //
+                return this.maySync(queues, result)
+            })
     )}
 
-    // check result of process list if executed synchronously
-    procSync(list) { return(
-        Promise.resolve(!this.pipe.processInSync || list.then(checkSuccess))
+    /* returns the result either in a promise after checking the queues' state
+       or directly without considering it */
+    maySync(queues, result) { return(
+        this.pipe.processInSync
+            ? queues.then(hasSuccess)
+                    .then(checkState(result))
+            : result
     )}
 
     // runs the matrix of args and pipes in a promise
@@ -86,18 +92,20 @@ module.exports = class Queue {
     }
 
     hasPipe(list) { return list.every( obj => obj instanceof this.Pipe ) }
+    execReturn(func, ret) { return arg => (func.call(this, arg), ret) }
     recap(data)   { this.pipe.summary && this.traceHandler('summary', data) }
-    showError(e)  { e.message && this.pipe.errHandler(showError(e.message)) }
+    showError(e)  { e.message && this.pipe.errHandler(dispError(e.message)) }
 }
 
 //
 const
 ensureList       = val  => [].concat(val),
 collect          = list => ensureList(list)
-                           .map( elem => elem && elem.name || elem )
+                           .map( elem => elem && elem.name || `"${elem}"` )
                            .join(', '),
 hasFunc          = list => list.every( isFunction ),
 runFunc = (funcs, data) => Promise.all(funcs.map( func => func(data) )),
+hasSuccess       = list => list.every( isSuccess ),
 isSuccess         = val => isBoolean(val) && val,
 mergeData = (pipe, data) => result => ({ ...data, ...mapWith(result, pipe) }),
 
@@ -115,11 +123,11 @@ transform  =  (list, proc, defValue={}) =>
 
 // error handling
 check = (cond, value=cond, errMsg) => cond && value || throwError(errMsg),
-checkArray = (arr, msg) => check(isArray(arr), arr, expectArray(msg)),
-checkSuccess =     list => check(list.every( isSuccess )),
-checkSync = data => cond => check(cond, data, "Invalid synchronization!"),
 throwError  = msg  => { throw Error(msg) },
+checkState = result => state => check(state, result),
+checkArray = (arr, msg) => check(isArray(arr), arr, expectArray(msg)),
+reomoveInvalid   = list => list.filter(item => !isNullOrUndefined(item)),
 unknownType = pipe => `Unknown queue type in pipe [ ${collect(pipe)} ].`,
 expectArray = ({name}) => `Result of [${name}] should be an Array.`,
-showError   = msg  => `Oops! ${msg}\n`,
+dispError   = msg  => `Oops! ${msg}\n`,
 debug = (label, data) => console.debug(`\n${label}\n`, data)
