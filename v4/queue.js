@@ -1,124 +1,114 @@
 "use strict"
 /* https://github.com/jcschmidig/mixed-pipeline/blob/master/readmev4.md */
-//
-const { isBoolean, isString, isFunction, isArray } = require('util')
-//
 
-module.exports = class Queue {
-    //
+const Data = require('./data')
+const Matrix = require('./matrix')
+const { emptyAllowed, ensureList, throwError, checkArray, checkSuccess, pExec,
+        hasInstance, listToObject, ensureLAttr, hasFunction, pListExec,
+        isInstance, timeUnit }
+        = require('./util')
+const { isString, isFunction, isObject } = require('util')
+const { error, debug } = console
+const [ SUCCESS, FAIL ] = [ true, false ]
+
+module.exports = class {
+    get data()       { return this._data.tuple }
+    set data(data)   {
+        if (!data || data._tuple) this._data = new Data(data)
+        else this._data.tuple = [this.names, data]
+    }
+
+    get names()      { return this._names }
+    set names(attr)  { this._names = ensureLAttr(attr, 'name') }
+
+    get time()       { return process.hrtime(this._time) }
+    startTimer()     { this._time = process.hrtime() }
+
     constructor(pipe) {
-        this.pipe          = pipe
-        this.Pipe          = pipe.constructor
-        this.queue         = pipe.queue
-        this.traceHandler  = pipe.traceHandler  || debug
+        if (!isObject(pipe)) throwError('pipe should be an object')
+        if (!checkArray(pipe.pipeline).length) throwError('pipeline not found')
+
+        this.pipe  = pipe
+        this.trace = pipe.traceHandler || trace
+        this.error = pipe.errHandler   || error
     }
 
-    // Main method returns a promise with success flag (true/false)
-    execute(input, state={}) { return(
-        this.queue
-            // process the queue items sequentially
-            .reduce(
-                (data, item) => data.then(this.process(ensureList(item))),
-                // initial value for data
-                Promise.resolve({ ...state, [this.pipe.propNameInput]: input })
-            )
-
-            // show me what happened and terminate with success
-            .then(this.execReturn(this.recap, true))
-
-            // document any error and terminate with failure
-            .catch(this.execReturn(this.showError, false))
-    )}
-
-    /* processes the current item and
-       returns the accumulated data for the next item */
-    process(pipe) { return(
-        data => Promise.resolve(this.handleType(pipe, data))
-                       .then(ensureList)
-                       .then(mergeData(pipe, data))
-    )}
-
-    // handles the different pipe types
-    handleType(pipe, data) {
-        const [ head, ...tail ] = pipe
-        //
-        switch(true) {      /* mind the order */
-            // 1 - a list of functions to execute
-            case hasFunc(pipe) :
-                return runFunc(pipe, data)
-
-            // 2 - a function and a list of pipes to execute
-            case isFunction(head) && this.hasPipe(tail) :
-                return this.runPipe(head, tail, data)
-
-            // 3 - a caption and optional function results to trace the pipeline
-            case isString(head) && hasFunc(tail) :
-                return this.traceHandler(head, reduceWith(tail, data))
-        }
-        // oops, never mind
-        throwError(unknownType(pipe))
+    execute(...args) {
+        return this.pipe.pipeline
+            .reduce ( this.process.bind(this), this.init(args) )
+            .then   ( this.onSuccess.bind(this) )
+            .catch  ( this.onFail.bind(this) )
+            .finally( this.calc.bind(this) )
     }
 
-    // launches the queues simultaneously and sync-s on demand
-    runPipe(func, pipes, data) { return(
-        runFunc(ensureList(func), data)
-            .then(result => {
-                const args = checkArray(result[0], func)
-                const queues = this.launch(args, pipes, data)
-                //
-                return this.pipe.processInSync
-                    ? queues.then(hasSuccess).then(checkState(result))
-                    : result
-            })
-    )}
+    async process(data, pipe) {
+        const [ head, ...tail ] = pipe = ensureList(pipe)
+        this.saveData(await data, pipe)
 
-    // runs the matrix of args and pipes in a promise
-    launch(args, pipes, data) {
-        const matrix = []
-        //
-        for(const pipe of pipes) /*  X  */ for(const arg of args)
-            matrix.push( pipe.execute(arg, data) )
-        //
-        return Promise.all(matrix)
+        return(
+            hasFunction(pipe) ?
+                pListExec(pipe, this.data) :
+
+            isFunction(head) && hasInstance(tail, this.pipe) ?
+                this.executePipe(head, tail) :
+
+            isString(head) && hasFunction(tail, emptyAllowed) ?
+                this.trace(head, reduce(tail, this.data)) :
+
+            throwError('Unknown type')
+        )
     }
 
-    hasPipe(list) { return list.every( obj => obj instanceof this.Pipe ) }
-    execReturn(func, ret) { return arg => (func.call(this, arg), ret) }
-    recap(data)   { this.pipe.summary && this.traceHandler('summary', data) }
-    showError(e)  { e.message && this.pipe.errHandler(dispError(e.message)) }
+    executePipe(func, pipes) {
+        return pExec(func, this.data)
+            .then(checkArray)
+            .then(async args => Array.of(args, await this.matrix(pipes, args)))
+    }
+
+    matrix(pipes, args) {
+        const mtx = new Matrix(pipes, args).run(this.pipe.execute, this._data)
+        if (this.pipe.processInSync) return mtx.then(checkSuccess)
+    }
+
+    init([input, state]) {
+        this.pipe.measure && this.startTimer()
+        this.saveData(state, this.pipe.propNameInput)
+
+        return input
+    }
+
+    saveData(data, pipe) {
+        this.data = data
+        this.names = pipe
+    }
+
+    onSuccess(data) {
+        this.saveData(data)
+        this.pipe.summary && this.trace('summary', this.data)
+
+        return SUCCESS
+    }
+
+    onFail({message}) {
+        message &&
+        this.error(generalErr(message, collect(this.names), this.pipe.name))
+
+        return FAIL
+    }
+
+    calc() {
+        if (!this.pipe.measure) return
+
+        const time = timeUnit(this.time)
+        debug(`executed in ${time} by ${this.pipe.name}`)
+    }
 }
 
-//
 const
-ensureList       = val  => [].concat(val),
-collect          = list => ensureList(list)
-                           .map( elem => elem && elem.name || `"${elem}"` )
-                           .join(', '),
-hasFunc          = list => list.every( isFunction ),
-runFunc = (funcs, data) => Promise.all(funcs.map( func => func(data) )),
-hasSuccess       = list => list.every( isSuccess ),
-isSuccess         = val => isBoolean(val) && val,
-mergeData = (pipe, data) => result => ({ ...data, ...mapWith(result, pipe) }),
-
-// convert array to object using desired mapping
-mapWith    = (data, funcs) =>
-    transform( data.filter( (_, i) => funcs[i].name ),
-              (value, index) => [ funcs[index].name, value ] ),
-
-reduceWith = (funcs, data) =>
-    transform( funcs, ({name}) => [ name, data[name] ], data ),
-
-transform  =  (list, proc, defValue={}) =>
-    isArray(list) && list.length
-        ? Object.fromEntries( list.map( proc ) )
-        : defValue,
-
-// error handling
-check = (cond, value=cond, errMsg) => cond && value || throwError(errMsg),
-throwError  = msg  => { throw Error(msg) },
-checkState = result => state => check(state, result),
-checkArray = (arr, msg) => check(isArray(arr), arr, expectArray(msg)),
-unknownType = pipe => `Unknown queue type in pipe [ ${collect(pipe)} ].`,
-expectArray = ({name}) => `Result of [${name}] should be an Array.`,
-dispError   = msg  => `Oops! ${msg}\n`,
-debug = (label, data) => console.debug(`\n${label}\n`, data)
+collect = list =>
+    list.map(elem => elem && elem.name || `"${elem.toString()}"`).join(', '),
+reduce = (list, data) => list.length
+    ?listToObject(list, ({name}) => [name, data[name]]) :data,
+generalErr = (msg, names, pName='-') =>
+    `Oops! ${msg} in pipe [ ${names} ] of ${pName}.\n`,
+trace = (label, data) => void debug(`${label}\n`, data)

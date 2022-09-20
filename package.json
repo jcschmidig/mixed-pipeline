@@ -1,6 +1,6 @@
 {
   "name": "mixed-pipeline",
-  "version": "4.3.11",
+  "version": "4.3.12",
   "description": "Pipeline to process synchronous and asynchronous functions",
   "engines": {
         "node": ">=12"
@@ -9,7 +9,7 @@
   "scripts": {
     "test":  "node ./v3/example",
     "test:v3": "node ./v3/example",
-    "test:v4": "node ./v4/example"
+    "test:v4": "node --trace-warnings ./v4/example"
   },
   "repository": {
     "type": "git",

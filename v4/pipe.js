@@ -2,25 +2,27 @@
 /* https://github.com/jcschmidig/mixed-pipeline/blob/master/readmev4.md */
 //
 
-const { isArray, isObject } = require('util')
+const { ensureBoolean, ensureArray, ensureObject } = require('./util')
 const Queue = require('./queue')
 
-module.exports = class Pipe {
-    get name() { return `<${this.constructor.name}>` }
+module.exports = class {
+    get name() { return `<${this._name}>` }
+    set name(value) { this._name = value || 'Pipe'}
 
-    constructor(queue, options) {
-        const opt  = isObject(options) ? options : {}
-        this.queue = isArray(queue)    ? queue   : []
+    constructor(pipeline, options) {
+        const opt     = ensureObject(options)
+        this.pipeline = ensureArray(pipeline)
 
-        this.errHandler    = opt.errHandler    || console.error
         this.traceHandler  = opt.traceHandler
+        this.errHandler    = opt.errHandler
         this.propNameInput = opt.propNameInput || 'execute'
-        this.summary       = opt.summary       || false
-        this.processInSync = opt.processInSync || false
+        this.summary       = ensureBoolean(opt.summary)
+        this.processInSync = ensureBoolean(opt.processInSync)
+        this.measure       = ensureBoolean(opt.measure)
+        this.name          = opt.name
     }
 
     execute(...args) {
-        // creates a Queue to be executed in the context of this pipe
-        return new Queue(this).execute(...args)
+        return new Queue(Object.freeze(this)).execute(...args)
     }
 }
