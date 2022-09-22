@@ -13,7 +13,7 @@ mergeAttr = decomp( (attr, entry) => entry[attr] ),
 mergeListAttr = attr => list => list.map(mergeAttr(attr)),
 
 has = (list, proc, allowEmpty)  =>
-    checkArray(list).length>=+!ensureBoolean(allowEmpty) && list.every(proc),
+    checkArray(list).length>=+!(allowEmpty===emptyAllowed) && list.every(proc),
 
 ensureAttrFn = (attr, func) => val => func.call(null, val[attr]),
 
@@ -35,13 +35,14 @@ ensureLAttr   = (list, attr) => ensureList(list).map(ensureAttr(attr)),
 
 throwError    = msg => { throw Error(msg) },
 
-hasFunction   = (list, aEmpty) => has(list, isFunction, aEmpty),
+hasFunction   = (list, allowEmpty) => has(list, isFunction, allowEmpty),
 
 isInstance    = decomp( (_class, obj) => obj instanceof _class.constructor ),
 
-hasInstance   = (list, _class, aEmpty) => has(list, isInstance(_class), aEmpty),
+hasInstance   = (list, _class, allowEmpty) =>
+    has(list, isInstance(_class), allowEmpty),
 
-hasSuccess    = (list, aEmpty) => has(list, ensureBoolean, aEmpty),
+hasSuccess    = (list, allowEmpty) => has(list, ensureBoolean, allowEmpty),
 
 listToObject  = (list, proc) => Object.fromEntries(list.map(proc)),
 
@@ -51,8 +52,8 @@ check = (cond, value, errMsg="") => cond
 
 checkArray = arr => check(isArray(arr), arr, "Array expected"),
 
-checkSuccess = (list, aEmpty) =>
-    check(hasSuccess(list, aEmpty), null, "Process failed"),
+checkSuccess = (list, allowEmpty) =>
+    check(hasSuccess(list, allowEmpty), null, "Process failed"),
 
 checkFunction = func =>
     check(isFunction(func), func, `${func} should be a function`),

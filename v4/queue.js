@@ -25,8 +25,8 @@ module.exports = class {
     startTimer()     { this._time = process.hrtime() }
 
     constructor(pipe) {
-        if (!isObject(pipe)) throwError('pipe should be an object')
-        if (!checkArray(pipe.pipeline).length) throwError('pipeline not found')
+        isObject(pipe) || throwError('pipe should be an object')
+        checkArray(pipe.pipeline).length || throwError('pipeline not found')
 
         this.pipe  = pipe
         this.trace = pipe.traceHandler || trace
@@ -53,7 +53,7 @@ module.exports = class {
                 this.executePipe(head, tail) :
 
             isString(head) && hasFunction(tail, emptyAllowed) ?
-                this.trace(head, reduce(tail, this.data)) :
+                Array.of(this.trace(head, reduce(tail, this.data))) :
 
             throwError('Unknown type')
         )
@@ -62,12 +62,17 @@ module.exports = class {
     executePipe(func, pipes) {
         return pExec(func, this.data)
             .then(checkArray)
-            .then(async args => Array.of(args, await this.matrix(pipes, args)))
+            .then(async args => Array.of(
+                args,
+                await this.matrix(pipes, args)
+            ))
     }
 
     matrix(pipes, args) {
-        const mtx = new Matrix(pipes, args).run(this.pipe.execute, this._data)
-        if (this.pipe.processInSync) return mtx.then(checkSuccess)
+        const matrix = new Matrix(pipes, args)
+        const procs  = matrix.run(this.pipe.execute, this._data)
+
+        if (this.pipe.processInSync) return procs.then(checkSuccess)
     }
 
     init([input, state]) {
@@ -83,8 +88,10 @@ module.exports = class {
     }
 
     onSuccess(data) {
-        this.saveData(data)
-        this.pipe.summary && this.trace('summary', this.data)
+        this.pipe.summary && (
+            this.saveData(data),
+            this.trace('summary', this.data)
+        )
 
         return SUCCESS
     }
