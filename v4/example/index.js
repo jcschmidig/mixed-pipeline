@@ -65,7 +65,7 @@ const writeConfig = ({ configOutput, packagePath }) =>
     Pipe definitions
  */
 
-// Splitted pipeline, runs for every <packagePath>
+// Splitted pipeline, runs for every <entryPath>
 const pplProcess = pipe(
 	Array.of([ packageConfig, deleteConfig ], configOutput, writeConfig),
 	{ propNameInput: 'packagePath', measure: false, name: 'Process' }

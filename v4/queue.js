@@ -5,7 +5,7 @@ const Data = require('./data')
 const Matrix = require('./matrix')
 const { emptyAllowed, ensureList, throwError, checkArray, checkSuccess, pExec,
         hasInstance, listToObject, ensureLAttr, hasFunction, pListExec,
-        isInstance, timeUnit }
+        isInstance, timeUnit, ensureArray }
         = require('./util')
 const { isString, isFunction, isObject } = require('util')
 const { error, debug } = console
@@ -53,7 +53,7 @@ module.exports = class {
                 this.executePipe(head, tail) :
 
             isString(head) && hasFunction(tail, emptyAllowed) ?
-                Array.of(this.trace(head, reduce(tail, this.data))) :
+                ensureArray(this.trace(head, reduce(tail, this.data))) :
 
             throwError('Unknown type')
         )
