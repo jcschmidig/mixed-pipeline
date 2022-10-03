@@ -12,14 +12,12 @@ const { error, debug } = console
 const [ SUCCESS, FAIL ] = [ true, false ]
 
 module.exports = class {
-    get data()       { return this._data.tuple }
-    set data(data)   {
+    get data() { return this._data.tuple }
+    set data([data, names]) {
         if (!data || data._tuple) this._data = new Data(data)
         else this._data.tuple = [this.names, data]
+        if (names) this.names = ensureLAttr(names, 'name')
     }
-
-    get names()      { return this._names }
-    set names(attr)  { this._names = ensureLAttr(attr, 'name') }
 
     get time()       { return process.hrtime(this._time) }
     startTimer()     { this._time = process.hrtime() }
@@ -82,10 +80,7 @@ module.exports = class {
         return input
     }
 
-    saveData(data, pipe) {
-        this.data = data
-        this.names = pipe
-    }
+    saveData(...args) { this.data = args }
 
     onSuccess(data) {
         this.pipe.summary && (
